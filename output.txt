@@ -1,0 +1,8 @@
+TreeVisitor.java valid
+Factorial.java valid
+LambdaTest.java valid
+LinkedList.java valid
+BubbleSort.java valid
+LinearSearch.java valid
+BinaryTree.java valid
+QuickSort.java valid
