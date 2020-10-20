@@ -1,5 +1,7 @@
 parser grammar MinijavaParser;
-options {tokenVocab = MinijavaLexer;}
+options {
+    tokenVocab = MinijavaLexer;
+}
 
 goal: mainClass classDeclaration* EOF;
 mainClass: CLASS identifier LBRACE PUBLIC STATIC VOID MAIN LPAREN STRING LBRACK RBRACK identifier RPAREN LBRACE statement RBRACE RBRACE;
@@ -13,7 +15,7 @@ statement: LBRACE statement* RBRACE
          | WHILE LPAREN expression RPAREN statement
          | PRINTLN LPAREN expression RPAREN SEMIC
          | identifier ASSIGN expression SEMIC
-         | identifier LBRACK expression RBRACK ASSIGN expression SEMIC;
+         | identifier LBRACK expression RBRACK ASSIGN expression SEMIC; //array assign
 expression: expression OP expression
           | expression PM expression
           | expression LBRACK expression RBRACK

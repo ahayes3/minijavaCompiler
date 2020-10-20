@@ -8,6 +8,8 @@ import scala.io.Source
 object Main {
   def main(args:Array[String]): Unit = {
     val tree = Parse("testFiles/parsing/LambdaTest.java")
-    ParseTreeWalker.DEFAULT.walk(new TypeChecker(), tree)
+    val ast = AstBuilder(tree)
+
+    //ParseTreeWalker.DEFAULT.walk(astBuilder, tree)
   }
 }
