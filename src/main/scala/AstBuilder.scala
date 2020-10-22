@@ -1,5 +1,3 @@
-import java.text.ParseException
-
 import MinijavaParser._
 import org.antlr.v4.runtime.tree.TerminalNodeImpl
 
@@ -7,14 +5,14 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.ListHasAsScala
 
 object AstBuilder {
-  var head:Node = _
 
-  def apply(ctx: GoalContext): Node = {
-    var mainclass:MainClass = null
+
+  def apply(ctx: GoalContext): Goal = {
+
     var classes = Array[Clazz]()
 
     var children = ctx.children.asScala
-    mainclass = mainClass(children.head.asInstanceOf[MainClassContext])
+    val mainclass = mainClass(children.head.asInstanceOf[MainClassContext])
     children = children.tail
 
     if(children.last.isInstanceOf[TerminalNodeImpl])
@@ -23,13 +21,14 @@ object AstBuilder {
     for(a <- children) {
       classes = classes :+ clazz(a.asInstanceOf[ClassDeclarationContext])
     }
-    null
+    Goal(mainclass, classes,ctx.getStart.getLine)
   }
   def mainClass(ctx:MainClassContext): MainClass = {
     val children = ctx.children.asScala
     MainClass(children.find(_.isInstanceOf[IdentifierContext]).get.asInstanceOf[IdentifierContext].getText,
-      children.find(_.isInstanceOf[IdentifierContext]).get.getText,
-      statement(children.find(_.isInstanceOf[StatementContext]).get.asInstanceOf[StatementContext])
+      children.findLast(_.isInstanceOf[IdentifierContext]).get.getText,
+      statement(children.find(_.isInstanceOf[StatementContext]).get.asInstanceOf[StatementContext]),
+      ctx.getStart.getLine
     )
   }
   def clazz(ctx: ClassDeclarationContext): Clazz = {
@@ -41,10 +40,11 @@ object AstBuilder {
       else
         None
     }
-    Clazz(children.find(_.isInstanceOf[IdentifierContext]).asInstanceOf[IdentifierContext].getText,
+    Clazz(children.find(_.isInstanceOf[IdentifierContext]).get.asInstanceOf[IdentifierContext].getText,
       extend,
       varDecs(children.filter(_.isInstanceOf[VarDeclaration]).map(_.asInstanceOf[VarDeclarationContext])),
-      methodDecs(children.filter(_.isInstanceOf[VarDeclaration]).map(_.asInstanceOf[MethodDeclarationContext]))
+      methodDecs(children.filter(_.isInstanceOf[MethodDeclarationContext]).map(_.asInstanceOf[MethodDeclarationContext])) ,
+      ctx.getStart.getLine
     )
 
   }
@@ -62,24 +62,27 @@ object AstBuilder {
     val st:Statement = a.getText match {
       case "{" =>
         val b = children.clone().slice(1,children.length - 1)
-        BlockStatement(b.map(p => statement(p.asInstanceOf[StatementContext])).toArray)
+        BlockStatement(b.map(p => statement(p.asInstanceOf[StatementContext])).toArray,ctx.getStart.getLine)
       case "if" =>
         IfStatement(expression(children(2).asInstanceOf[ExpressionContext]),
           statement(children(4).asInstanceOf[StatementContext]),
-          statement(children(6).asInstanceOf[StatementContext])
+          statement(children(6).asInstanceOf[StatementContext]),
+          ctx.getStart.getLine
         )
       case "while" =>
         WhileStatement(expression(children(2).asInstanceOf[ExpressionContext]),
-          statement(children(4).asInstanceOf[StatementContext])
+          statement(children(4).asInstanceOf[StatementContext]),
+          ctx.getStart.getLine
         )
-      case "println" =>
-        PrintStatement(expression(children(2).asInstanceOf[ExpressionContext]))
+      case "System.out.println" =>
+        PrintStatement(expression(children(2).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
       case _ =>
         if(children(1).getText == "=")
-          Assignment(children.head.getText,expression(children(2).asInstanceOf[ExpressionContext]))
+          Assignment(children.head.getText,expression(children(2).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
         else if(children(1).getText == "[") {
           ArrAssign(children.head.getText, expression(children(2).asInstanceOf[ExpressionContext]),
-            expression(children(5).asInstanceOf[ExpressionContext])
+            expression(children(5).asInstanceOf[ExpressionContext]),
+            ctx.getStart.getLine
           )
         }
         else
@@ -95,42 +98,44 @@ object AstBuilder {
     val children = ctx.children.asScala
     children.head match {
       case e:ExpressionContext => children(1).getText match {
-        case "&&" => AndExpression(expression(e), expression(children(2).asInstanceOf[ExpressionContext]))
-        case "<" => LessExpression(expression(e), expression(children(2).asInstanceOf[ExpressionContext]))
-        case "*" => MulExpression(expression(e), expression(children(2).asInstanceOf[ExpressionContext]))
-        case "+" => SumExpression(expression(e), expression(children(2).asInstanceOf[ExpressionContext]))
-        case "-" => SubExpression(expression(e), expression(children(2).asInstanceOf[ExpressionContext]))
-        case "[" => ArrAccess(expression(e),expression(children(2).asInstanceOf[ExpressionContext]))
-        case "." if children(2).getText=="length" => LengthExpression(expression(children(2).asInstanceOf[ExpressionContext]))
+        case "&&" => AndExpression(expression(e), expression(children(2).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
+        case "<" => LessExpression(expression(e), expression(children(2).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
+        case "*" => MulExpression(expression(e), expression(children(2).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
+        case "+" => SumExpression(expression(e), expression(children(2).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
+        case "-" => SubExpression(expression(e), expression(children(2).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
+        case "[" => ArrAccess(expression(e),expression(children(2).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
+        case "." if children(2).getText=="length" => LengthExpression(expression(children(2).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
         case "." if children(2).isInstanceOf[IdentifierContext] => DotExpression(expression(e),children(2).getText,{
           val sub = children.tail.filter(_.isInstanceOf[ExpressionContext]).map(_.asInstanceOf[ExpressionContext])
           expressions(sub)
-        })
+        },ctx.getStart.getLine)
       }
       case e:LambdaContext => lambda(e)
       case e:TerminalNodeImpl => e.symbol.getType match {
-        case MinijavaParser.INTLIT => if(children.length ==2) IntLit(children(1).getText.toInt * (if(children.head.getText == "-") -1 else 1)) else IntLit(children(1).getText.toInt)
-        case MinijavaParser.TRUE => BoolLit(true)
-        case MinijavaParser.FALSE => BoolLit(false)
-        case MinijavaParser.THIS => ThisExpression()
-        case MinijavaParser.NEW if children(1).isInstanceOf[TerminalNodeImpl] => NewIntArrExpression(expression(children(3).asInstanceOf[ExpressionContext]))
-        case MinijavaParser.NEW if children(1).isInstanceOf[IdentifierContext] => NewIdentExpression(children(1).getText)
-        case MinijavaParser.NEG => NegateExpression(expression(children(1).asInstanceOf))
-        case MinijavaParser.LPAREN => ParenExpression(expression(children(1).asInstanceOf))
+        case MinijavaParser.INTLIT => IntLit(e.getText.toInt,ctx.getStart.getLine)
+        case MinijavaParser.TRUE => BoolLit(true,ctx.getStart.getLine)
+        case MinijavaParser.FALSE => BoolLit(false,ctx.getStart.getLine)
+        case MinijavaParser.THIS => ThisExpression(ctx.getStart.getLine)
+        case MinijavaParser.NEW if children(1).isInstanceOf[TerminalNodeImpl] => NewIntArrExpression(expression(children(3).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
+        case MinijavaParser.NEW if children(1).isInstanceOf[IdentifierContext] => NewIdentExpression(children(1).getText,ctx.getStart.getLine)
+        case MinijavaParser.NEG => NegateExpression(expression(children(1).asInstanceOf),ctx.getStart.getLine)
+        case MinijavaParser.LPAREN => ParenExpression(expression(children(1).asInstanceOf),ctx.getStart.getLine)
       }
-      case e:IdentifierContext => Ident(e.getText)
+      case e:IdentifierContext => Ident(e.getText,ctx.getStart.getLine)
     }
   }
   def lambda(ctx: LambdaContext): Lambda = {
     val children = ctx.children.asScala
     children(2) match {
-      case e:ExpressionContext => LambdaExpression(parameters(children.head.asInstanceOf[ParamContext]),
-        expression(children(2).asInstanceOf)
+      case _:ExpressionContext => LambdaExpression(parameters(children.head.asInstanceOf[ParamContext]),
+        expression(children(2).asInstanceOf[ExpressionContext]),
+        ctx.getStart.getLine
       )
-      case e:TerminalNodeImpl => LambdaBlock(parameters(children.head.asInstanceOf),
-        varDecs(children.filter(_.isInstanceOf[VarDeclarationContext]).map(_.asInstanceOf)),
+      case _:TerminalNodeImpl => LambdaBlock(parameters(children.head.asInstanceOf[ParamContext]),
+        varDecs(children.filter(_.isInstanceOf[VarDeclarationContext]).map(_.asInstanceOf[VarDeclarationContext])),
         statements(children.filter(_.isInstanceOf[StatementContext]).map(_.asInstanceOf[StatementContext])),
-        ReturnExpression(children(6).asInstanceOf)
+        ReturnExpression(expression(children(5).asInstanceOf[ExpressionContext]),ctx.getStart.getLine),
+        ctx.getStart.getLine
       )
     }
   }
@@ -139,7 +144,7 @@ object AstBuilder {
   }
   def varDec(ctx:VarDeclarationContext): VarDeclaration = {
     val children = ctx.children.asScala
-    VarDeclaration(tipe(children.head.asInstanceOf[TypeContext]),children(1).getText)
+    VarDeclaration(tipe(children.head.asInstanceOf[TypeContext]),children(1).getText,ctx.getStart.getLine)
   }
   def tipe(ctx:TypeContext): Type = {
     val children = ctx.children.asScala
@@ -147,11 +152,9 @@ object AstBuilder {
       case "int" => IntType
       case "boolean" => BoolType
       case "int[]" => IntArrType
-      case a:String =>identType(a)
+      case "String[]" => StringArrType
+      case a:String =>IdentType(a)
     }
-  }
-  def identType(ident:String): IdentType = {
-    IdentType(ident)
   }
   def methodDecs(buffer: mutable.Buffer[MethodDeclarationContext]): Array[MethodDec] = {
     buffer.map(methodDec).toArray
@@ -163,7 +166,8 @@ object AstBuilder {
       parameters(children(3).asInstanceOf[ParamContext]),
       varDecs(children.filter(_.isInstanceOf[VarDeclarationContext]).map(_.asInstanceOf[VarDeclarationContext])),
       statements(children.filter(_.isInstanceOf[StatementContext]).map(_.asInstanceOf[StatementContext])),
-      expression(children(8).asInstanceOf[ExpressionContext])
+      expression(children.find(_.isInstanceOf[ExpressionContext]).get.asInstanceOf[ExpressionContext]),
+      ctx.getStart.getLine
     )
   }
   def parameters(context: ParamContext): Parameters = {

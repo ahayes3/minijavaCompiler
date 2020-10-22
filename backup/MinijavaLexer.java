@@ -81,6 +81,7 @@ public class MinijavaLexer extends Lexer {
 			}
 		}
 	}
+
 	@Override
 	@Deprecated
 	public String[] getTokenNames() {

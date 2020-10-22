@@ -22,7 +22,7 @@ expression: expression OP expression
           | expression DOT LENGTH
           | lambda
           | expression DOT identifier LPAREN (expression (COMMA expression)*)? RPAREN
-          | PM? INTLIT
+          | /*PM?*/ INTLIT
           | TRUE
           | FALSE
           | identifier
