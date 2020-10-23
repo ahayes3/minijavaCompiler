@@ -49,12 +49,7 @@ object TypeChecker {
         val c = visitVarDecs(e.varDecs,scope,env)
         a = a:++ c._1
         newEnv = c._2
-//        a = a.appendedAll(for(i <- e.varDecs) yield {
-//            val b = visit(i,scope,newEnv)
-//            newEnv = newEnv.addVar(i.ident,scope,i.tipe)
-//            b
-//          })
-//        e.varDecs.flatMap(visit(_,Environment(e.ident,HashMap(),HashMap())))
+
         if(classes.contains(e.ident))
           a = a :+ (e.line+":Duplicate class: "+e.ident)
         if(inheritance.find(e.parent.getOrElse("Object")).isEmpty) (a :+ (e.line + ":Error: Parent class" + e.parent.get +"does not exist.")) else a
@@ -131,6 +126,26 @@ object TypeChecker {
         else
           Left(Array(e.line + ":Error: Variable"+ e.ident +" not found."))
       //todo rest of expression cases
+      case e:ArrAccess =>
+        val expr = visitExpression(e.array,scope,env)
+        val offset = visitExpression(e.offset,scope,env)
+        if(expr.isLeft)
+          Left(expr.swap.getOrElse())
+        else if(offset.isLeft)
+          Left(offset.swap.getOrElse())
+        else if(expr.getOrElse() != IntArrType)
+          Left(Array(e.line + ":Error: Expected type: integer array."))
+        else if(offset.getOrElse() != IntType)
+          Left(Array(e.line + ":Error: Expected type: int"))
+        else //if(expr.getOrElse() == IntArrType && offset.getOrElse() == IntType)
+          Right(IntType)
+      case e:DotExpression =>
+      case e:LengthExpression =>
+      case e:NewIntArrExpression =>
+      case e:NewIdentExpression =>
+      case e: NegateExpression =>
+      case e: ParenExpression =>
+      case e: ReturnExpression =>
     }
 
   }

@@ -9,9 +9,9 @@ object Main {
   def main(args:Array[String]): Unit = {
     val tree = Parse("testFiles/parsing/LambdaTest.java")
     val ast = AstBuilder(tree)
-    val typeErrs =
 
-    visit(ast)
+
+    //visit(ast)
 
     //ParseTreeWalker.DEFAULT.walk(astBuilder, tree)
   }
