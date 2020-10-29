@@ -8,9 +8,6 @@ object AstBuilder {
 
 
   def apply(ctx: GoalContext): Goal = {
-
-    var classes = Array[Clazz]()
-
     var children = ctx.children.asScala
     val mainclass = mainClass(children.head.asInstanceOf[MainClassContext])
     children = children.tail
@@ -18,10 +15,16 @@ object AstBuilder {
     if(children.last.isInstanceOf[TerminalNodeImpl])
       children.remove(children.size - 1)
 
-    for(a <- children) {
-      classes = classes :+ clazz(a.asInstanceOf[ClassDeclarationContext])
+//    val classes = for(a <- children.filter(_.isInstanceOf[ClassDeclarationContext])) yield {
+//      clazz(a.asInstanceOf[ClassDeclarationContext])
+//    }
+    val classes = for(a <- children.filter(_.isInstanceOf[ClassDeclarationContext])) yield {
+      clazz(a.asInstanceOf[ClassDeclarationContext])
     }
-    Goal(mainclass, classes,ctx.getStart.getLine)
+    val lambdas = for(a<- children.filter(_.isInstanceOf[LambdaDeclarationContext])) yield {
+      lambdaI(a.asInstanceOf[LambdaDeclarationContext])
+    }
+    Goal(mainclass, classes.toSeq,lambdas.toSeq,ctx.getStart.getLine)
   }
   def mainClass(ctx:MainClassContext): MainClass = {
     val children = ctx.children.asScala
@@ -42,7 +45,7 @@ object AstBuilder {
     }
     Clazz(children.find(_.isInstanceOf[IdentifierContext]).get.asInstanceOf[IdentifierContext].getText,
       extend,
-      varDecs(children.filter(_.isInstanceOf[VarDeclaration]).map(_.asInstanceOf[VarDeclarationContext])),
+      varDecs(children.filter(_.isInstanceOf[VarDeclarationContext]).map(_.asInstanceOf[VarDeclarationContext])),
       methodDecs(children.filter(_.isInstanceOf[MethodDeclarationContext]).map(_.asInstanceOf[MethodDeclarationContext])) ,
       ctx.getStart.getLine
     )
@@ -62,7 +65,7 @@ object AstBuilder {
     val st:Statement = a.getText match {
       case "{" =>
         val b = children.clone().slice(1,children.length - 1)
-        BlockStatement(b.map(p => statement(p.asInstanceOf[StatementContext])).toArray,ctx.getStart.getLine)
+        BlockStatement(b.map(p => statement(p.asInstanceOf[StatementContext])).toSeq,ctx.getStart.getLine)
       case "if" =>
         IfStatement(expression(children(2).asInstanceOf[ExpressionContext]),
           statement(children(4).asInstanceOf[StatementContext]),
@@ -118,8 +121,8 @@ object AstBuilder {
         case MinijavaParser.THIS => ThisExpression(ctx.getStart.getLine)
         case MinijavaParser.NEW if children(1).isInstanceOf[TerminalNodeImpl] => NewIntArrExpression(expression(children(3).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
         case MinijavaParser.NEW if children(1).isInstanceOf[IdentifierContext] => NewIdentExpression(children(1).getText,ctx.getStart.getLine)
-        case MinijavaParser.NEG => NegateExpression(expression(children(1).asInstanceOf),ctx.getStart.getLine)
-        case MinijavaParser.LPAREN => ParenExpression(expression(children(1).asInstanceOf),ctx.getStart.getLine)
+        case MinijavaParser.NEG => NegateExpression(expression(children(1).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
+        case MinijavaParser.LPAREN => ParenExpression(expression(children(1).asInstanceOf[ExpressionContext]),ctx.getStart.getLine)
       }
       case e:IdentifierContext => Ident(e.getText,ctx.getStart.getLine)
     }
@@ -180,6 +183,14 @@ object AstBuilder {
         case _ =>
       }
     }
-    Parameters(params)
+    Parameters(params,context.getStart.getLine)
+  }
+  def lambdaI(ctx:LambdaDeclarationContext):LambdaI = {
+    val children = ctx.children.asScala
+    val ident = identifier(children(2).asInstanceOf[IdentifierContext])
+    val mTipe = tipe(children(3).asInstanceOf[TypeContext])
+    val mIdent = identifier(children(4).asInstanceOf[IdentifierContext])
+    val params = parameters(children(5).asInstanceOf[ParamContext])
+    LambdaI(ident,mIdent,mTipe,params,ctx.getStart.getLine)
   }
 }

@@ -51,6 +51,18 @@ public class MinijavaParserBaseListener implements MinijavaParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterLambdaDeclaration(MinijavaParser.LambdaDeclarationContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitLambdaDeclaration(MinijavaParser.LambdaDeclarationContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterVarDeclaration(MinijavaParser.VarDeclarationContext ctx) { }
 	/**
 	 * {@inheritDoc}

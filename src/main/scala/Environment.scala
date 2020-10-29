@@ -1,53 +1,34 @@
-import scala.collection.immutable.HashMap
+import scala.collection.mutable
 
-case class Environment(clazz:String,vars: HashMap[(String,Int),Type],methods:HashMap[String,Parameters]) {
-//  val vars = new HashMap[String,Type]()
-//  val methods = new HashMap[String,Parameters]()
+class Environment(val prev:Environment,val ident:String) { //ident of empty string means this isn't a class environment
+  val vars:mutable.HashMap[String,Type] = new mutable.HashMap()
+  val methods:mutable.HashMap[(String,Parameters),Type] = new mutable.HashMap()
 
-  def getVarType(str:String,scope:Int): Option[Type] = {
-    var a = scope
-    while(a > Int.MinValue) {
-      if(vars.get(str,scope).nonEmpty)
-        return vars.get(str,scope)
-      a= a-1
-    }
-    None
-  }
-  private def containsVar(str:String,i:Int): Boolean = {
-    vars.contains(str,i)
-  }
-  def addVar(str:String,i:Int,tipe: Type): Environment = {
-    Environment(clazz,vars + ((str,i )-> tipe),methods)
-  }
-  def containsMethod(str:String, params:Parameters): Boolean = {
-    if(!methods.contains(str))
-      false
-    else if(methods.contains(str) && paramsEqual(params,methods(str)))
-      true
+  def this() = this(null,"")
+
+  def getBottom: Environment = {
+    if(prev == null)
+      this
     else
-      false
+      prev.getBottom
   }
-  def addMethod(str:String,params:Parameters): Environment = {
-    Environment(clazz,vars,methods+(str -> params))
+
+  def addMethod(ident:String,params:Parameters,tipe:Type): Unit = {
+    methods.put((ident,params), tipe)
   }
-  def containsType(t:Type): Boolean = {
-    vars.values.toArray.contains(t)
+  def getMethodType(ident:String,types:Seq[Type]): Option[Type] = {
+    val key = methods.keys.find(p => p._1 == ident && p._2.param.map(p => p._1) == types)
+    if(key.nonEmpty)
+      methods.get(key.get)
+    else None
   }
-  def containsInScope(str:String,i:Int):Boolean = {
-    getVarsScope(i).map(_._1).contains(str)
+  def addVar(ident:String,tipe:Type): Unit = {
+    vars.put(ident, tipe)
   }
-  def getVarsScope(i:Int): Array[(String,Int)] = {
-    vars.keySet.filter(_._2==i).toArray
-  }
-  private def paramsEqual(p1:Parameters,p2:Parameters): Boolean = {
-    if(p1.param.length != p2.param.length)
-      false
-    else {
-      for(i <- p1.param.indices) {
-        if(p1.param(i)._1 != p2.param(i)._1)
-          return true
-      }
-      false
-    }
+  def getVarType(ident:String):Type = {
+    vars.getOrElse(ident,if(prev != null)
+      prev.getVarType(ident)
+    else
+      throw new TypeCheckerError)
   }
 }

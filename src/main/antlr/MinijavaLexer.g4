@@ -39,6 +39,7 @@ THIS: 'this';
 NEW: 'new';
 NEG: '!';
 ARROW: '->';
+LAMBDA: 'lambda';
 IDENT: [a-zA-Z][a-zA-Z_0-9]*;
 WS: [ \t\r\n\u000C]+ -> channel(HIDDEN);
 LINE_COMMENT: '//' ~[\r\n]* -> channel(HIDDEN);

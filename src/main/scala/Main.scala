@@ -1,29 +1,21 @@
 import java.io.{File, FileNotFoundException}
-
-import org.antlr.v4.runtime.tree.ParseTreeWalker
-import org.antlr.v4.runtime.{CharStreams, CommonTokenStream, Parser, Token}
-
-import scala.io.Source
+import scala.collection.mutable
 
 object Main {
   def main(args:Array[String]): Unit = {
-    val tree = Parse("testFiles/parsing/LambdaTest.java")
+    val tree = Parse("testFiles/parsing/BinaryTree.java")
     val ast = AstBuilder(tree)
-
-
-    //visit(ast)
-
+    val classSymbols = SymbolTableBuilder(ast)
+    //visit(ast,classSymbols)
+    val typeErrors = TypeChecker(ast,classSymbols)
+    if(typeErrors.isEmpty)
+      println("No errors found")
+    else
+      typeErrors.foreach(println(_))
     //ParseTreeWalker.DEFAULT.walk(astBuilder, tree)
   }
   def test(p: File): Boolean = {
     val tree = Parse(p.getAbsolutePath)
     true
-  }
-  def visit(node:Node): Unit = {
-    node match {
-      case e:Goal => println(e.main)
-        visit(e.main)
-      case _ => println("not yet matched")
-    }
   }
 }

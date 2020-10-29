@@ -3,9 +3,10 @@ options {
     tokenVocab = MinijavaLexer;
 }
 
-goal: mainClass classDeclaration* EOF;
+goal: mainClass (classDeclaration|lambdaDeclaration)* EOF;
 mainClass: CLASS identifier LBRACE PUBLIC STATIC VOID MAIN LPAREN STRING LBRACK RBRACK identifier RPAREN LBRACE statement RBRACE RBRACE;
 classDeclaration: CLASS identifier (EXTENDS identifier)? LBRACE varDeclaration* methodDeclaration* statement* RBRACE;
+lambdaDeclaration: LAMBDA identifier LBRACE type identifier param SEMIC RBRACE;
 varDeclaration: type identifier SEMIC;
 methodDeclaration: PUBLIC type identifier param LBRACE varDeclaration* statement* RETURN expression SEMIC RBRACE;
 param: LPAREN (type identifier (COMMA type identifier)*)? RPAREN;
