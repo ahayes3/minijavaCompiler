@@ -7,12 +7,13 @@ object SymbolTableBuilder {
     for(i <- goal.classes) {
       table.put(i.ident,buildClass(i))
     }
+
+    for(i <- goal.lambdas) {
+      table.put(i.ident,buildLambdas(i))
+    }
     table
   }
-//  def buildMain(main:MainClass): Environment = {
-//    val env = new Environment()
-//    main.
-//  }
+
   def buildClass(clazz:Clazz): Environment = {
     val env = new Environment()
     clazz.varDecs.foreach(p => env.addVar(p.ident,p.tipe))
@@ -20,4 +21,9 @@ object SymbolTableBuilder {
     env
   }
 
+  def buildLambdas(lambda:LambdaI): Environment = {
+    val env = new Environment()
+    env.methods.put((lambda.ident,lambda.params),lambda.mTipe)
+    env
+  }
 }

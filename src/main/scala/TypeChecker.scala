@@ -134,6 +134,10 @@ object TypeChecker {
         a = a :++ visit(e.statement, env)
         a :++ visit(e.elseStatement, env)
 
+//      case e:LambdaI =>
+//        var a = Seq[String]()
+//        classSymbols(e.ident).methods((e.ident,e.params))
+
       case _ => throw new NotImplementedError("Shouldn't be here")
     }
   }
@@ -151,7 +155,7 @@ object TypeChecker {
           case _:MulExpression => "multiply"
         }
         if (t1 != IntType || t2 != IntType)
-          a = a :+ (e.line + ":Error: Cannot" +operation+ " to " + t1 + " and " + t2 + ".")
+          a = a :+ (e.line + ":Error: Cannot " +operation+ " to " + t1 + " and " + t2 + ".")
         (a, IntType)
       case e:LessExpression =>
         var a = Seq[String]()

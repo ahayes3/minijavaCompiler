@@ -5,13 +5,17 @@ class LambdaTest {
 }
 class Lambdas {
     public int test() {
-        Lambda a;
-        Lambda b;
-        a = (int b) -> b+56;
+        DoThing a;
+        DoThing b;
+        a = () -> 56;
         b = () -> {
             System.out.println(51);
             return 1;
         };
         return 15;
     }
+}
+
+lambda DoThing {
+    int run();
 }
