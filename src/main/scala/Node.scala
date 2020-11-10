@@ -35,11 +35,21 @@ case class MethodDec(tipe:Type,ident:String, params:Parameters, varDecs: Seq[Var
 }
 
 case object SomeType extends Type
-case object IntType extends Type
-case object BoolType extends Type
-case object IntArrType extends Type
-case object StringArrType extends Type
-case class IdentType(ident:String) extends Type
+case object IntType extends Type {
+  override def toString: String = "int"
+}
+case object BoolType extends Type {
+  override def toString: String = "boolean"
+}
+case object IntArrType extends Type {
+  override def toString: String = "int[]"
+}
+case object StringArrType extends Type {
+  override def toString: String = "String[]"
+}
+case class IdentType(ident:String) extends Type {
+  override def toString: String = ident
+}
 
 trait BinaryExpression extends Expression {
   val left: Expression
@@ -47,8 +57,31 @@ trait BinaryExpression extends Expression {
 }
 
 case class Parameters(param: Seq[(Type, String)],line:Int) extends Node {
-  override def getChildren: Seq[Node] =
+  override def getChildren: Seq[Node] = {
     Seq()
+  }
+  def typesEqual(parameters:Parameters): Boolean = {
+    if(parameters.param.length == param.length) {
+      for(i <- param.indices) {
+        if(param(i)._1 != parameters.param(i)._1)
+          return false
+      }
+    }
+    else
+      return false
+    true
+  }
+  def types: String = {
+    var str = "("
+    for(i <- param) {
+      if(str != "(")
+        str += ","+ i._1
+      else
+        str += i._1
+    }
+    str += ")"
+    str
+  }
 }
 
 trait MathExpression extends Expression {

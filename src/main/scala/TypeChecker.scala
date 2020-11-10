@@ -68,10 +68,16 @@ object TypeChecker {
         e.params.param.foreach(p=> newEnv.addVar(p._2,p._1))
         var a = e.varDecs.flatMap(visit(_, newEnv))
         a = a :++ e.statements.flatMap(visit(_, newEnv))
+        val outTipe = if(e.tipe.isInstanceOf[IdentType] && !classSymbols.contains(e.tipe.toString)) {
+          a = a :+ (e.line + ":Error: type " + e.tipe + " not found.")
+          SomeType
+        }
+        else
+          e.tipe
         if (env.methods.contains((e.ident, e.params)))
           a = a :+ (e.line + ":Error: Duplicate method.")
         else
-          env.addMethod(e.ident, e.params, e.tipe)
+          env.addMethod(e.ident, e.params, outTipe)
         val (b, t1) = visitExp(e.ret, newEnv)
         a = a :++ b
         if (t1 != e.tipe && t1 != SomeType)
@@ -90,9 +96,39 @@ object TypeChecker {
 
         var a = Seq[String]()
         a = a :++ b
-        val t = env.getVarType(e.ident)
-        if (t != tipe)
-          a = a :+ (e.line + ":Error: Mismatched types " + t + " and " + tipe + ".")
+
+
+
+        val t = env.getVarType(e.ident).getOrElse({
+          a = a :+ (e.line + ":Error: Tried assigning to uninitialized identifier " + e.ident + ".")
+          SomeType
+        })
+        val n = t.toString
+        //val x = classSymbols(eTipe.toString)
+
+
+        e.value match {
+          case p: LambdaExpression =>
+            val x  = classSymbols(t.toString)
+            for(i <- x.methods) {
+              if(!i._1._2.typesEqual(p.params))
+                a = a :+ (e.line + ":Error: Mismatched parameters "+i._1._2.types + " and "+p.params.types)
+              if(tipe != i._2)
+                a = a :+ (e.line + ":Error: mismatched types "+ tipe + " and "+ i._2+".")
+            }
+          case p: LambdaBlock =>
+            val x = classSymbols(t.toString)
+            for(i <- x.methods) {
+              if(!i._1._2.typesEqual(p.params))
+                a = a :+ (e.line + ":Error: Mismatched parameters "+i._1._2.types + " and "+p.params.types)
+              if(tipe != i._2 && tipe != SomeType && i._2 != SomeType)
+                a = a :+ (e.line + ":Error: Mismatched types "+tipe +" and "+i._2+".")
+            }
+
+          case _ =>
+            if(t != tipe && t != SomeType && tipe != SomeType)
+              a = a :+ (e.line + ":Error: Mismatched types " + t + " and " + tipe + ".")
+        }
         a
 
       case e: ArrAssign =>
@@ -112,7 +148,7 @@ object TypeChecker {
 
       case e: PrintStatement =>
         val (b, t1) = visitExp(e.value, env)
-        if (t1 != IntType)
+        if (t1 != IntType && t1 != SomeType)
           b :+ (e.line + ":Error: expected int found " + t1 + ".")
         else
           b
@@ -174,7 +210,7 @@ object TypeChecker {
           a = a :+ (e.line + ":Error: Cannot apply && to " + t1 + " and " + t2 + ".")
         (a,BoolType)
       case e: Ident =>
-        (Seq(), env.getVarType(e.ident))
+        (Seq(), env.getVarType(e.ident).get)
       case _: IntLit =>
         (Seq(), IntType)
       case _: BoolLit =>
@@ -196,6 +232,8 @@ object TypeChecker {
         a = a :++ b
         if (!t1.isInstanceOf[IdentType])
           a :+ (e.line + ":Error: expected class found " + t1 + ".")
+        else if(!classSymbols.contains(t1.toString))
+          a :+ (e.line + ":Error: class "+t1.toString+ " not found.")
         val typeArr = e.args.map(p => {
           val (b, t0) = visitExp(p, env)
           a = a :++ b
@@ -205,6 +243,7 @@ object TypeChecker {
           case i: IdentType => classSymbols(i.ident).getMethodType(e.funct, typeArr).getOrElse(throw new TypeCheckerError)
           case _ => SomeType
         }
+
         //val outType = if(t1.isInstanceOf[IdentType]) classSymbols.get(t1.asInstanceOf[IdentType].ident).get.getMethodType(e.funct,typeArr)
         (a, outType)
 
@@ -227,8 +266,9 @@ object TypeChecker {
       case e: NewIdentExpression =>
         if (!classSymbols.contains(e.ident))
           (Seq(e.line + ":Error: class " + e.ident + " not found."), SomeType)
-        else
+        else {
           (Seq(), IdentType(e.ident))
+        }
       case e: NegateExpression =>
         var a = Seq[String]()
         val (b, t1) = visitExp(e.expression, env)

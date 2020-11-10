@@ -25,10 +25,12 @@ class Environment(val prev:Environment,val ident:String) { //ident of empty stri
   def addVar(ident:String,tipe:Type): Unit = {
     vars.put(ident, tipe)
   }
-  def getVarType(ident:String):Type = {
-    vars.getOrElse(ident,if(prev != null)
+  def getVarType(ident:String):Option[Type] = {
+    if(vars.contains(ident))
+      Some(vars(ident))
+    else if(prev != null)
       prev.getVarType(ident)
     else
-      throw new TypeCheckerError)
+      None
   }
 }
