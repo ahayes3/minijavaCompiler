@@ -19,11 +19,31 @@ object TypeChecker {
 
     def find(ident: String): Option[InheritanceNode] = {
       if (this.name == ident)
-        Option(this)
-      else if (this.children.nonEmpty)
-        this.children.find(_.find(ident).nonEmpty)
+        Some(this)
+      else if (this.children.nonEmpty) {
+        for(i <- children) {
+          val a = i.find(ident)
+          if(a.nonEmpty)
+            return a
+        }
+        None
+        //this.children.find(_.find(ident).nonEmpty)
+      }
       else
         None
+    }
+
+    def addChild(a:InheritanceNode): Unit = {
+      val node = find(a.parent.get.name)
+      if(node.nonEmpty)
+        node.get.children.addOne(a)
+      else
+        children.addOne(a)
+      //children.addOne(a)
+    }
+
+    override def toString: String = {
+      name
     }
   }
 
@@ -39,7 +59,7 @@ object TypeChecker {
   var classes = new ArrayBuffer[String]()
 
   def apply(ast: Goal, symbols: mutable.HashMap[String, Environment]): Seq[String] = {
-    inheritance = InheritanceNode("Object", None, new ArrayBuffer[InheritanceNode]())
+    //inheritance = InheritanceNode("java/lang/Object", None, new ArrayBuffer[InheritanceNode]())
     classSymbols = symbols
     classes.clear()
 
@@ -51,7 +71,7 @@ object TypeChecker {
       case e: Goal => visit(e.main, null) :++ e.classes.flatMap(visit(_, null))
       case e: MainClass =>
         val newEnv = new Environment(null, e.ident)
-        newEnv.addVar(e.strArgsIdent, StringArrType)
+        newEnv.addVar(e.strArgsIdent, ArrType(StringType))
         classes.addOne(e.ident)
         visit(e.statement, newEnv)
 
@@ -59,6 +79,12 @@ object TypeChecker {
         val newEnv = new Environment(null, e.ident)
         var a = e.varDecs.flatMap(visit(_, newEnv))
         a = a :++ e.methods.flatMap(visit(_, newEnv))
+        val t = inheritance.find(e.parent)
+        if(t.isEmpty)
+          a = a :+ (e.line + ":Error: Parent class "+e.parent +" not found.")
+        else
+          t.get.addChild(InheritanceNode(e.ident,t,new ArrayBuffer[InheritanceNode]()))
+
         if (classes.contains(e.ident))
           a = a :+ (e.line + ":Error: Duplicate class.")
         a
@@ -103,10 +129,6 @@ object TypeChecker {
           a = a :+ (e.line + ":Error: Tried assigning to uninitialized identifier " + e.ident + ".")
           SomeType
         })
-        val n = t.toString
-        //val x = classSymbols(eTipe.toString)
-
-
         e.value match {
           case p: LambdaExpression =>
             val x  = classSymbols(t.toString)
@@ -134,17 +156,35 @@ object TypeChecker {
       case e: ArrAssign =>
         val t0 = env.getVarType(e.ident)
         var a = Seq[String]()
-        if (t0 != IntArrType)
-          a = a :+ (e.line + ":Error: expected int[] found " + t0 + ".")
-        val (b, t1) = visitExp(e.offset, env)
+
+        val (b,t1) = visitExp(e.value,env)
         a = a :++ b
-        if (t1 != IntType)
-          a = a :+ (e.line + ":Error: expected int.")
-        val (c, t2) = visitExp(e.value, env)
+
+        val(c,t2) = visitExp(e.offset,env)
+        if(t2 != IntType)
+          a = a :+ e.line + ":Error: expected int found "+t2+"."
+
         a = a :++ c
-        if (t2 != t0)
-          a = a :+ (e.line + ":Error: expected " + t0 + " found " + t2 + ".")
+        t0.get match {
+          case i:ArrType =>
+            if(i.tipe != t1)
+              a = a :+ e.line + ":Error: mismatched types "+ i.tipe +" and "+t1+"."
+
+          case _ => throw new TypeCheckerError
+        }
         a
+
+//        if (t0.nonEmpty && t0.get.isInstanceOf[ArrType])
+//          a = a :+ (e.line + ":Error: expected int[] found " + t0 + ".")
+//        val (b, t1) = visitExp(e.offset, env)
+//        a = a :++ b
+//        if (t1 != IntType)
+//          a = a :+ (e.line + ":Error: expected int.")
+//        val (c, t2) = visitExp(e.value, env)
+//        a = a :++ c
+//        if (t2 != t0)
+//          a = a :+ (e.line + ":Error: expected " + t0 + " found " + t2 + ".")
+//        a
 
       case e: PrintStatement =>
         val (b, t1) = visitExp(e.value, env)
@@ -210,22 +250,40 @@ object TypeChecker {
           a = a :+ (e.line + ":Error: Cannot apply && to " + t1 + " and " + t2 + ".")
         (a,BoolType)
       case e: Ident =>
+        println(e.ident)
         (Seq(), env.getVarType(e.ident).get)
       case _: IntLit =>
         (Seq(), IntType)
       case _: BoolLit =>
         (Seq(), BoolType)
+
       case e: ArrAccess =>
         var a = Seq[String]()
         val (b, t1) = visitExp(e.array, env)
         a = a :++ b
-        if (t1 != IntArrType)
-          a = a :+ (e.line + ":Error: expected Seq found " + t1 + ".")
-        val (c, t2) = visitExp(e.array, env)
-        a = a :++ c
-        if (t2 != IntType)
-          a = a :+ (e.line + ":Error: expected int found " + t2 + ".")
-        (a, IntArrType)
+        val(c,t2) = visitExp(e.offset,env)
+        a = a :++c
+        if(t2 != IntType)
+          a = a :+ e.line + ":Error: expected int found "+t2+"."
+
+        val t0 = t1 match {
+          case i:ArrType => i.tipe
+          case _ => throw new TypeCheckerError
+        }
+        (a,t0)
+//        if (t1 != IntArrType)
+//          a = a :+ (e.line + ":Error: expected" + IntArrType+" found " + t1 + ".")
+//        val (c, t2) = visitExp(e.array, env)
+//        a = a :++ c
+//        if (t2 != IntArrType)
+//          a = a :+ (e.line + ":Error: expected int found " + t2 + ".")
+//
+//        val(d,t3) = visitExp(e.offset,env)
+//        a = a:++d
+//        if(t3 != IntType)
+//          a = a :+ (e.line + ":Error: expected int found "+t3 + ".")
+//
+//        (a, IntArrType)
       case e: DotExpression =>
         var a = Seq[String]()
         val (b, t1) = visitExp(e.left, env)
@@ -239,8 +297,11 @@ object TypeChecker {
           a = a :++ b
           t0
         })
+        println(e.line)
         val outType = t1 match {
-          case i: IdentType => classSymbols(i.ident).getMethodType(e.funct, typeArr).getOrElse(throw new TypeCheckerError)
+          case i: IdentType =>
+
+            classSymbols(i.ident).getMethodType(e.funct, typeArr).getOrElse(throw new TypeCheckerError)
           case _ => SomeType
         }
 
@@ -251,8 +312,8 @@ object TypeChecker {
         var a = Seq[String]()
         val (b, t1) = visitExp(e.expression, env)
         a = a :++ b
-        if (t1 != IntArrType)
-          a = a :+ (e.line + ":Error: expected int[] found " + t1 + ".")
+        if (!t1.isInstanceOf[ArrType])
+          a = a :+ (e.line + ":Error: expected array found " + t1 + ".")
         (a, IntType)
       case _: ThisExpression =>
         (Seq(), IdentType(env.getBottom.ident))
@@ -262,7 +323,7 @@ object TypeChecker {
         a = a :++ b
         if (t1 != IntType)
           a = a :+ (e.line + ":Error: expected int found " + t1 + ".")
-        (a, IntArrType)
+        (a, ArrType(IntType))
       case e: NewIdentExpression =>
         if (!classSymbols.contains(e.ident))
           (Seq(e.line + ":Error: class " + e.ident + " not found."), SomeType)

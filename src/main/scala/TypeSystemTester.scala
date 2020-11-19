@@ -1,8 +1,8 @@
-import java.io.{File, PrintWriter}
+import java.io.File
 
 object TypeSystemTester {
   def main(args:Array[String]): Unit = {
-    val folder = new File("testFiles/typeChecking")
+    val folder = new File("testFiles/parsing")
     val testFiles = folder.listFiles().sorted
     testFiles.foreach(p => {
       println(p.getName)

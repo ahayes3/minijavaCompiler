@@ -1,4 +1,5 @@
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 object SymbolTableBuilder {
   def apply(goal:Goal): mutable.HashMap[String,Environment] = {
@@ -11,13 +12,31 @@ object SymbolTableBuilder {
     for(i <- goal.lambdas) {
       table.put(i.ident,buildLambdas(i))
     }
+    TypeChecker.inheritance = TypeChecker.InheritanceNode("java/lang/Object",None,new ArrayBuffer[TypeChecker.InheritanceNode]())
+    var classes:ArrayBuffer[Clazz] = ArrayBuffer.from(goal.classes.toArray[Clazz])
+    while(classes.nonEmpty) {
+
+      val canDo = classes.filter(p => TypeChecker.inheritance.find(p.parent).nonEmpty)
+      for (i <- canDo){
+        if(i.ident=="MyVisitor")
+          println(TypeChecker.inheritance.find("Visitor"))
+        val a = i
+        val parent = TypeChecker.inheritance.find(a.parent)
+        if (parent.nonEmpty) {
+          TypeChecker.inheritance.addChild(TypeChecker.InheritanceNode(a.ident,parent,new ArrayBuffer[TypeChecker.InheritanceNode]()))
+          classes -= a
+        }
+      }
+    }
+
     table
   }
 
   def buildClass(clazz:Clazz): Environment = {
     val env = new Environment()
     clazz.varDecs.foreach(p => env.addVar(p.ident,p.tipe))
-    clazz.methods.foreach(p => env.addMethod(p.ident,p.params,p.tipe))
+    clazz.methods.foreach(p => {
+      env.addMethod(p.ident,p.params,p.tipe)})
     env
   }
 

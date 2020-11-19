@@ -11,12 +11,19 @@ object Main {
       System.exit(1)
     }
     val tree = Parse(path)
+
     val ast = AstBuilder(tree)
+
     val classSymbols = SymbolTableBuilder(ast)
+
     val typeErrors = TypeChecker(ast,classSymbols)
+
     if(typeErrors.isEmpty)
       println("No errors found")
     else
       typeErrors.foreach(println(_))
+
+    //val bytes = GenerateCode(ast)
+
   }
 }

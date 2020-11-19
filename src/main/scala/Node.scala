@@ -13,7 +13,7 @@ case class Goal(main:MainClass,classes: Seq[Clazz],lambdas:Seq[LambdaI],line:Int
     Seq(main) :++ classes
   }
 }
-case class Clazz(ident:String,parent:Option[String],varDecs:Seq[VarDeclaration],methods:Seq[MethodDec],line:Int) extends Node {
+case class Clazz(ident:String,parent:String,varDecs:Seq[VarDeclaration],methods:Seq[MethodDec],line:Int) extends Node {
   override def getChildren: Seq[Node] = {
     varDecs :++ methods
   }
@@ -41,12 +41,20 @@ case object IntType extends Type {
 case object BoolType extends Type {
   override def toString: String = "boolean"
 }
-case object IntArrType extends Type {
-  override def toString: String = "int[]"
+case object StringType extends Type {
+  override def toString: String = "String"
 }
-case object StringArrType extends Type {
-  override def toString: String = "String[]"
+case class ArrType(tipe:Type) extends Type{
+  override def toString: String = tipe +"[]"
 }
+//case object IntArrType extends Type {
+//  val tipe: IntType.type = IntType
+//  override def toString: String = "int[]"
+//}
+//case object StringArrType extends Type {
+//  val tipe: StringType.type = StringType
+//  override def toString: String = "String[]"
+//}
 case class IdentType(ident:String) extends Type {
   override def toString: String = ident
 }

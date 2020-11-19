@@ -1,0 +1,1 @@
+class MethodNotFoundException extends Exception {}

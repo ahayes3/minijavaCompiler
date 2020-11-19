@@ -36,12 +36,12 @@ object AstBuilder {
   }
   def clazz(ctx: ClassDeclarationContext): Clazz = {
     val children = ctx.children.asScala
-    val extend:Option[String] = { //Returns identifier of extends if there is one
+    val extend:String = { //Returns identifier of extends if there is one
       val a = children.filter(_.isInstanceOf[IdentifierContext])
       if(a.length > 1)
-        Option(a(1).asInstanceOf[IdentifierContext].getText)
+        a(1).asInstanceOf[IdentifierContext].getText
       else
-        None
+        "java/lang/Object"
     }
     Clazz(children.find(_.isInstanceOf[IdentifierContext]).get.asInstanceOf[IdentifierContext].getText,
       extend,
@@ -154,8 +154,8 @@ object AstBuilder {
     children.head.getText match {
       case "int" => IntType
       case "boolean" => BoolType
-      case "int[]" => IntArrType
-      case "String[]" => StringArrType
+      case "int[]" => ArrType(IntType)
+      case "String[]" => ArrType(StringType)
       case a:String =>IdentType(a)
     }
   }
