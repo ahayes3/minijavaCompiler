@@ -14,14 +14,18 @@ object Main {
 
     val ast = AstBuilder(tree)
 
-    val classSymbols = SymbolTableBuilder(ast)
+    val (hierarchy,hErr) = HierarchyBuilder(ast)
+    if(hErr.nonEmpty) {
+      hErr.foreach(println)
+      System.exit(1)
+    }
 
-    val typeErrors = TypeChecker(ast,classSymbols)
+    val typeErrors = TypeChecker(ast,hierarchy)
 
-    if(typeErrors.isEmpty)
-      println("No errors found")
-    else
+    if(typeErrors.nonEmpty) {
       typeErrors.foreach(println(_))
+      System.exit(1)
+    }
 
     //val bytes = GenerateCode(ast)
 

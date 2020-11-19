@@ -8,45 +8,6 @@ class TypeCheckerError extends Error
 case class VarStack(prev: VarStack, vars: HashMap[String, Type])
 
 object TypeChecker {
-
-  case class InheritanceNode(name: String, parent: Option[InheritanceNode], children: mutable.ArrayBuffer[InheritanceNode]) {
-    def isParent(ident: String): Boolean = {
-      if (parent.getOrElse(return false).name == ident)
-        true
-      else
-        parent.get.isParent(ident)
-    }
-
-    def find(ident: String): Option[InheritanceNode] = {
-      if (this.name == ident)
-        Some(this)
-      else if (this.children.nonEmpty) {
-        for(i <- children) {
-          val a = i.find(ident)
-          if(a.nonEmpty)
-            return a
-        }
-        None
-        //this.children.find(_.find(ident).nonEmpty)
-      }
-      else
-        None
-    }
-
-    def addChild(a:InheritanceNode): Unit = {
-      val node = find(a.parent.get.name)
-      if(node.nonEmpty)
-        node.get.children.addOne(a)
-      else
-        children.addOne(a)
-      //children.addOne(a)
-    }
-
-    override def toString: String = {
-      name
-    }
-  }
-
   def typeEqual(t1: Type, t2: Type): Boolean = {
     if (t1 == t2 || t1 == SomeType || t2 == SomeType)
       true
@@ -54,140 +15,157 @@ object TypeChecker {
       false
   }
 
-  var classSymbols: mutable.HashMap[String, Environment] = _
-  var inheritance: InheritanceNode = _
-  var classes = new ArrayBuffer[String]()
-
-  def apply(ast: Goal, symbols: mutable.HashMap[String, Environment]): Seq[String] = {
-    //inheritance = InheritanceNode("java/lang/Object", None, new ArrayBuffer[InheritanceNode]())
-    classSymbols = symbols
-    classes.clear()
-
-    visit(ast, null)
+  def typeExist(t:Type,line:Int): Seq[String] = {
+    var a = Seq[String]()
+    t match {
+      case i:IdentType if !hierarchy.containsClass(i.ident) && !hierarchy.containsLambda(i.ident) =>
+        a :+= line + ":Error: type "+ i + " not found."
+      case i:ArrType =>
+        i.tipe match {
+          case j: IdentType if !hierarchy.containsLambda(j.ident) && !hierarchy.containsClass(j.ident) =>
+            a :+= line + ":Error: type "+ i + "[] not found."
+          case _ =>
+        }
+      case _ =>
+    }
+    a
   }
 
-  def visit(node: Node, env: Environment): Seq[String] = {
+  var hierarchy:Hierarchy = _
+  var classes = new ArrayBuffer[String]()
+  var avTypes = new ArrayBuffer[Type]()
+
+  def apply(ast: Goal, hierarchy: Hierarchy): Seq[String] = {
+    //inheritance = InheritanceNode("java/lang/Object", None, new ArrayBuffer[InheritanceNode]())
+    this.hierarchy = hierarchy
+    classes.clear()
+    visit(ast, hierarchy.head)
+  }
+
+  def visit(node: Node,ctx:HNode): Seq[String] = {
     node match {
       case e: Goal => visit(e.main, null) :++ e.classes.flatMap(visit(_, null))
       case e: MainClass =>
-        val newEnv = new Environment(null, e.ident)
-        newEnv.addVar(e.strArgsIdent, ArrType(StringType))
         classes.addOne(e.ident)
-        visit(e.statement, newEnv)
+        visit(e.statement, ctx.findMethod(e.ident,Seq[Type](ArrType(StringType))).get)
 
       case e: Clazz =>
-        val newEnv = new Environment(null, e.ident)
-        var a = e.varDecs.flatMap(visit(_, newEnv))
-        a = a :++ e.methods.flatMap(visit(_, newEnv))
-        val t = inheritance.find(e.parent)
-        if(t.isEmpty)
-          a = a :+ (e.line + ":Error: Parent class "+e.parent +" not found.")
-        else
-          t.get.addChild(InheritanceNode(e.ident,t,new ArrayBuffer[InheritanceNode]()))
-
-        if (classes.contains(e.ident))
-          a = a :+ (e.line + ":Error: Duplicate class.")
-        a
-
+        val newCtx = ctx.findClass(e.ident).get
+       ( e.varDecs.flatMap(visit(_, newCtx)) :++ e.methods.flatMap(visit(_, newCtx))).to(mutable.ArrayBuffer)
       case e: MethodDec =>
-        val newEnv = new Environment(env, "")
-        e.params.param.foreach(p=> newEnv.addVar(p._2,p._1))
-        var a = e.varDecs.flatMap(visit(_, newEnv))
-        a = a :++ e.statements.flatMap(visit(_, newEnv))
-        val outTipe = if(e.tipe.isInstanceOf[IdentType] && !classSymbols.contains(e.tipe.toString)) {
-          a = a :+ (e.line + ":Error: type " + e.tipe + " not found.")
-          SomeType
+        val newCtx = ctx.findMethod(e.ident,e.params.types).get
+        var a = e.varDecs.flatMap(visit(_, newCtx))
+        a :++= e.statements.flatMap(visit(_, newCtx))
+
+        val out = typeExist(e.tipe,e.line)
+        if(out.nonEmpty) {
+          newCtx.rType = SomeType
+          a :++= out
         }
-        else
-          e.tipe
-        if (env.methods.contains((e.ident, e.params)))
-          a = a :+ (e.line + ":Error: Duplicate method.")
-        else
-          env.addMethod(e.ident, e.params, outTipe)
-        val (b, t1) = visitExp(e.ret, newEnv)
-        a = a :++ b
+
+        val (b, t1) = visitExp(e.ret, newCtx)
+        a :++= b
         if (t1 != e.tipe && t1 != SomeType)
-          a = a :+ (e.ret.line + ":Error: expected " + e.tipe + " found " + t1 + ".")
+          a :++= (e.ret.line + ":Error: expected " + e.tipe + " found " + t1 + ".")
         a
 
       case e: VarDeclaration =>
-        env.addVar(e.ident, e.tipe)
-        Seq()
+        typeExist(e.tipe,e.line)
+        var a = Seq()
+        //todo check if name declared in current scope
+        if(ctx.fields.keys.count(_ == e.ident) > 1)
+          a :+= e.line + ":Error: duplicated identifier "+ e.ident+"."
+        a
 
       case e: BlockStatement =>
-        e.value.flatMap(visit(_, env))
+        e.value.flatMap(visit(_, ctx))
 
       case e: Assignment =>
-        val (b, tipe) = visitExp(e.value, env)
-
+        var (b, tipe) = visitExp(e.value, ctx)
         var a = Seq[String]()
-        a = a :++ b
+        a :++= b
+        if(ctx.getVar(e.ident).isEmpty)
+          a :+= (e.line + ":Error: Tried assigning to uninitialized identifier " + e.ident + ".")
+        else
+          throw new TypeCheckerError
+        var t = ctx.getVar(e.ident).get
 
+        val c1 = typeExist(t,e.line)
+        val c2 = typeExist(tipe,e.value.line)
+        if(c1.nonEmpty)
+          t = SomeType
+        if(c2.nonEmpty)
+          tipe = SomeType
 
+        a :++= (c1 :++ c2)
 
-        val t = env.getVarType(e.ident).getOrElse({
-          a = a :+ (e.line + ":Error: Tried assigning to uninitialized identifier " + e.ident + ".")
-          SomeType
-        })
         e.value match {
           case p: LambdaExpression =>
-            val x  = classSymbols(t.toString)
-            for(i <- x.methods) {
-              if(!i._1._2.typesEqual(p.params))
-                a = a :+ (e.line + ":Error: Mismatched parameters "+i._1._2.types + " and "+p.params.types)
-              if(tipe != i._2)
-                a = a :+ (e.line + ":Error: mismatched types "+ tipe + " and "+ i._2+".")
+            //todo check parameters and return for both of these
+            t match {
+              case i:IdentType =>
+                val l = hierarchy.findLambda(i.ident)
+                if(l.nonEmpty) {
+                  //check param and return
+                  if(l.get.method.parameters.types != p.params.types)
+                    a :+= e.line + ":Error: mismatched parameters "+ l.get.method.parameters.types +" and "+ p.params.types + "."
+                  if(!typeEqual(l.get.method.rType,tipe))
+                    a :+= e.line + ":Error: mismatched return types " + l.get.method.rType + " and "+ tipe
+                }
+                else {
+                  //type not found
+                  a :+= e.line + ":Error: lambda " + i + " not found."
+                }
+              case _ => a :+= e.line + ":Error: can't assign lambda to "+ _ + "."
             }
           case p: LambdaBlock =>
-            val x = classSymbols(t.toString)
-            for(i <- x.methods) {
-              if(!i._1._2.typesEqual(p.params))
-                a = a :+ (e.line + ":Error: Mismatched parameters "+i._1._2.types + " and "+p.params.types)
-              if(tipe != i._2 && tipe != SomeType && i._2 != SomeType)
-                a = a :+ (e.line + ":Error: Mismatched types "+tipe +" and "+i._2+".")
+            t match {
+              case i:IdentType =>
+                val l = hierarchy.findLambda(i.ident)
+                if(l.nonEmpty) {
+                  //check param and return
+                  if(l.get.method.parameters.types != p.params.types)
+                    a :+= e.line + ":Error: mismatched parameters "+ l.get.method.parameters.types +" and "+ p.params.types + "."
+                  if(!typeEqual(l.get.method.rType,tipe))
+                    a :+= e.line + ":Error: mismatched return types " + l.get.method.rType + " and "+ tipe
+                }
+                else {
+                  //type not found
+                  a :+= e.line + ":Error: lambda " + i + " not found."
+                }
+              case _ => a :+= e.line + ":Error: can't assign lambda to "+ _ + "."
             }
-
           case _ =>
-            if(t != tipe && t != SomeType && tipe != SomeType)
+            if(typeEqual(t,tipe))
               a = a :+ (e.line + ":Error: Mismatched types " + t + " and " + tipe + ".")
         }
         a
 
       case e: ArrAssign =>
-        val t0 = env.getVarType(e.ident)
-        var a = Seq[String]()
+        var a = Seq()
+        val(b,t3) = visitExp(e.value,ctx)
+        val(c,t2) = visitExp(e.offset,ctx)
 
-        val (b,t1) = visitExp(e.value,env)
-        a = a :++ b
-
-        val(c,t2) = visitExp(e.offset,env)
         if(t2 != IntType)
-          a = a :+ e.line + ":Error: expected int found "+t2+"."
+          a :+= e.offset.line + ":Error: expected int found " + t2+"."
 
-        a = a :++ c
-        t0.get match {
-          case i:ArrType =>
-            if(i.tipe != t1)
-              a = a :+ e.line + ":Error: mismatched types "+ i.tipe +" and "+t1+"."
-
-          case _ => throw new TypeCheckerError
+        a :++= (b :++ c)
+        val t0 = ctx.getVar(e.ident)
+        val t1 = if(t0.isEmpty) {
+          a :+= e.line + ":Error: variable "+e.ident + " not found."
+          SomeType
         }
+        else if(!t0.get.isInstanceOf[ArrType]) {
+          a :+= e.line + ":Error: mismatched types "+ t0.get + " and " + t3 +"."
+        }
+        else
+          t0.get
+        if(t1.asInstanceOf[ArrType].tipe !=t3 )
+         a :+= e.line + ":Error: mismatched types "+ t1.asInstanceOf[ArrType].tipe + " and " + t3 + "."
         a
 
-//        if (t0.nonEmpty && t0.get.isInstanceOf[ArrType])
-//          a = a :+ (e.line + ":Error: expected int[] found " + t0 + ".")
-//        val (b, t1) = visitExp(e.offset, env)
-//        a = a :++ b
-//        if (t1 != IntType)
-//          a = a :+ (e.line + ":Error: expected int.")
-//        val (c, t2) = visitExp(e.value, env)
-//        a = a :++ c
-//        if (t2 != t0)
-//          a = a :+ (e.line + ":Error: expected " + t0 + " found " + t2 + ".")
-//        a
-
       case e: PrintStatement =>
-        val (b, t1) = visitExp(e.value, env)
+        val (b, t1) = visitExp(e.value, ctx)
         if (t1 != IntType && t1 != SomeType)
           b :+ (e.line + ":Error: expected int found " + t1 + ".")
         else
@@ -195,20 +173,21 @@ object TypeChecker {
 
       case e: WhileStatement =>
         var a = Seq[String]()
-        val (b, t1) = visitExp(e.condition, env)
+        val (b, t1) = visitExp(e.condition, ctx)
         a = a :++ b
         if (t1 != BoolType)
           a = a :+ (e.line + ":Error: expected boolean found " + t1 + ".")
-        visit(e.statement, env)
+        visit(e.statement, ctx)
+        a
 
       case e: IfStatement =>
         var a = Seq[String]()
-        val (b, t1) = visitExp(e.condition, env)
+        val (b, t1) = visitExp(e.condition, ctx)
         a = a :++ b
         if (t1 != BoolType)
           a = a :+ (e.line + ":Error: expected boolean found " + t1 + ".")
-        a = a :++ visit(e.statement, env)
-        a :++ visit(e.elseStatement, env)
+        a = a :++ visit(e.statement, ctx)
+        a :++ visit(e.elseStatement, ctx)
 
 //      case e:LambdaI =>
 //        var a = Seq[String]()
@@ -218,12 +197,12 @@ object TypeChecker {
     }
   }
 
-  def visitExp(exp: Expression, env: Environment): (Seq[String], Type) = {
+  def visitExp(exp: Expression, ctx:HNode): (Seq[String], Type) = {
     exp match {
       case e: MathExpression =>
         var a = Seq[String]()
-        val (b, t1) = visitExp(e.left, env)
-        val (c, t2) = visitExp(e.right, env)
+        val (b, t1) = visitExp(e.left, ctx)
+        val (c, t2) = visitExp(e.right, ctx)
         a = a :++ b :++ c
         val operation = e match {
           case _:SumExpression => "add"
@@ -235,23 +214,30 @@ object TypeChecker {
         (a, IntType)
       case e:LessExpression =>
         var a = Seq[String]()
-        val (b, t1) = visitExp(e.left,env)
-        val (c,t2) = visitExp(e.right,env)
+        val (b, t1) = visitExp(e.left,ctx)
+        val (c,t2) = visitExp(e.right,ctx)
         a = a :++ b :++ c
         if((t1 != IntType && t1 != SomeType) || (t2 != IntType && t2 != SomeType))
           a = a :+ (e.line + ":Error: Cannot apply < to " + t1 + " and " + t2 + ".")
         (a,BoolType)
       case e:AndExpression =>
         var a = Seq[String]()
-        val (b, t1) = visitExp(e.left,env)
-        val (c,t2) = visitExp(e.right,env)
+        val (b, t1) = visitExp(e.left,ctx)
+        val (c,t2) = visitExp(e.right,ctx)
         a = a :++ b :++ c
         if((t1 != BoolType && t1 != SomeType) || (t2 != BoolType && t2 != SomeType))
           a = a :+ (e.line + ":Error: Cannot apply && to " + t1 + " and " + t2 + ".")
         (a,BoolType)
       case e: Ident =>
-        println(e.ident)
-        (Seq(), env.getVarType(e.ident).get)
+        var a = Seq()
+        val t = ctx.getVar(e.ident)
+        val t1 = if(t.isEmpty) {
+          a :+= e.line +":Error: variable "+e.ident + " not found."
+          SomeType
+        }
+        else
+          t.get
+        (a, t1)
       case _: IntLit =>
         (Seq(), IntType)
       case _: BoolLit =>
@@ -259,9 +245,9 @@ object TypeChecker {
 
       case e: ArrAccess =>
         var a = Seq[String]()
-        val (b, t1) = visitExp(e.array, env)
+        val (b, t1) = visitExp(e.array, ctx)
         a = a :++ b
-        val(c,t2) = visitExp(e.offset,env)
+        val(c,t2) = visitExp(e.offset,ctx)
         a = a :++c
         if(t2 != IntType)
           a = a :+ e.line + ":Error: expected int found "+t2+"."
@@ -271,22 +257,9 @@ object TypeChecker {
           case _ => throw new TypeCheckerError
         }
         (a,t0)
-//        if (t1 != IntArrType)
-//          a = a :+ (e.line + ":Error: expected" + IntArrType+" found " + t1 + ".")
-//        val (c, t2) = visitExp(e.array, env)
-//        a = a :++ c
-//        if (t2 != IntArrType)
-//          a = a :+ (e.line + ":Error: expected int found " + t2 + ".")
-//
-//        val(d,t3) = visitExp(e.offset,env)
-//        a = a:++d
-//        if(t3 != IntType)
-//          a = a :+ (e.line + ":Error: expected int found "+t3 + ".")
-//
-//        (a, IntArrType)
-      case e: DotExpression =>
+      case e: DotExpression => //todo
         var a = Seq[String]()
-        val (b, t1) = visitExp(e.left, env)
+        val (b, t1) = visitExp(e.left, ctx)
         a = a :++ b
         if (!t1.isInstanceOf[IdentType])
           a :+ (e.line + ":Error: expected class found " + t1 + ".")
@@ -310,51 +283,55 @@ object TypeChecker {
 
       case e: LengthExpression =>
         var a = Seq[String]()
-        val (b, t1) = visitExp(e.expression, env)
+        val (b, t1) = visitExp(e.expression, ctx)
         a = a :++ b
         if (!t1.isInstanceOf[ArrType])
           a = a :+ (e.line + ":Error: expected array found " + t1 + ".")
         (a, IntType)
       case _: ThisExpression =>
-        (Seq(), IdentType(env.getBottom.ident))
+        (Seq(), IdentType(ctx.getThis.ident))
       case e: NewIntArrExpression =>
         var a = Seq[String]()
-        val (b, t1) = visitExp(e.size, env)
+        val (b, t1) = visitExp(e.size, ctx)
         a = a :++ b
         if (t1 != IntType)
           a = a :+ (e.line + ":Error: expected int found " + t1 + ".")
         (a, ArrType(IntType))
       case e: NewIdentExpression =>
-        if (!classSymbols.contains(e.ident))
+        if (hierarchy.containsClass(e.ident)) //hierarchy contains identifer
           (Seq(e.line + ":Error: class " + e.ident + " not found."), SomeType)
         else {
           (Seq(), IdentType(e.ident))
         }
       case e: NegateExpression =>
         var a = Seq[String]()
-        val (b, t1) = visitExp(e.expression, env)
+        val (b, t1) = visitExp(e.expression, ctx)
         a = a :++ b
         if (t1 != IntType && t1 != BoolType)
           a = a :+ (e.line + ":Error: expected (int,boolean) found " + t1 + ".")
         (a, t1)
       case e: ParenExpression =>
         val a = Seq[String]()
-        val (b, t1) = visitExp(e.expression, env)
+        val (b, t1) = visitExp(e.expression, ctx)
         (a :++ b, t1)
       case e: ReturnExpression =>
         var a = Seq[String]()
-        val (b, t1) = visitExp(e.expression, env)
+        val (b, t1) = visitExp(e.expression, ctx)
         a = a :++ b
         (a, t1)
       case e: LambdaExpression =>
-        val (b, t1) = visitExp(e.expression, env)
+        val (b, t1) = visitExp(e.expression, ctx)
         (b, t1)
       case e: LambdaBlock =>
-        val newEnv = new Environment(env, "")
+        var a = Seq[String]()
+        val (b,t1) = visitExp(e.returnExp,)  //todo argument should be something based on what lambda can see
+        a :++= b
+        (a,t1)
+      /*
         var a = e.vars.flatMap(p => visit(p, newEnv))
         a = a :++ e.statements.flatMap(p => visit(p, newEnv))
         val (b, t1) = visitExp(e.returnExp, newEnv)
-        (a :++ b, t1)
+        (a :++ b, t1)*/
 
       case _ => throw new NotImplementedError("Shouldn't be here")
     }

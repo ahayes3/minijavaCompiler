@@ -79,7 +79,7 @@ case class Parameters(param: Seq[(Type, String)],line:Int) extends Node {
       return false
     true
   }
-  def types: String = {
+  override def toString: String = {
     var str = "("
     for(i <- param) {
       if(str != "(")
@@ -89,6 +89,9 @@ case class Parameters(param: Seq[(Type, String)],line:Int) extends Node {
     }
     str += ")"
     str
+  }
+  def types: Seq[Type] = {
+    param.map(_._1)
   }
 }
 
