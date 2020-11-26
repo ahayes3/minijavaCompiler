@@ -33,5 +33,5 @@ expression: expression OP expression
           | NEG expression
           | LPAREN expression RPAREN;
 lambda: param ARROW expression
-      | param ARROW LBRACE varDeclaration* statement* RETURN expression SEMIC RBRACE;
+      | param ARROW LBRACE varDeclaration* SEMIC RBRACE;
 identifier: IDENT;

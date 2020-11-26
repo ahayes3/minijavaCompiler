@@ -41,6 +41,9 @@ case object IntType extends Type {
 case object BoolType extends Type {
   override def toString: String = "boolean"
 }
+case object VoidType extends Type {
+  override def toString: String = "void"
+}
 case object StringType extends Type {
   override def toString: String = "String"
 }
@@ -158,8 +161,8 @@ case class ReturnExpression(expression:Expression,line:Int) extends Expression {
 case class LambdaExpression(params:Parameters,expression:Expression,line:Int) extends Lambda {
   override def getChildren: Seq[Node] = Seq(params,expression)
 }
-case class LambdaBlock(params:Parameters,vars:Seq[VarDeclaration],statements:Seq[Statement],returnExp:Expression,line:Int) extends Lambda {
-  override def getChildren: Seq[Node] = Seq(params) :++vars :++ statements :+ returnExp
+case class LambdaBlock(params:Parameters,vars:Seq[VarDeclaration],statements:Seq[Statement],line:Int) extends Lambda {
+  override def getChildren: Seq[Node] = Seq(params) :++vars :++ statements
 }
 
 case class BlockStatement(value: Seq[Statement],line:Int) extends Statement {

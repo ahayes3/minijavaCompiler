@@ -137,7 +137,6 @@ object AstBuilder {
       case _:TerminalNodeImpl => LambdaBlock(parameters(children.head.asInstanceOf[ParamContext]),
         varDecs(children.filter(_.isInstanceOf[VarDeclarationContext]).map(_.asInstanceOf[VarDeclarationContext])),
         statements(children.filter(_.isInstanceOf[StatementContext]).map(_.asInstanceOf[StatementContext])),
-        ReturnExpression(expression(children(5).asInstanceOf[ExpressionContext]),ctx.getStart.getLine),
         ctx.getStart.getLine
       )
     }

@@ -5,7 +5,7 @@ object HierarchyBuilder {
   def apply(goal:Goal): (Hierarchy,mutable.ArrayBuffer[String]) = {
     val err = mutable.ArrayBuffer[String]()
     val classes:mutable.Buffer[Clazz] = goal.classes.toBuffer.clone()
-    val hier = new Hierarchy
+    val hier = new Hierarchy(goal.main)
     for(i <- classes) {
       if(classes.count(_.ident == i.ident)> 1) {
         err += classes.findLast(_.ident == i.ident).get.line + ":Error: duplicate class "+i.ident +"."

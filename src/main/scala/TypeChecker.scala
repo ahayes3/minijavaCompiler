@@ -44,14 +44,16 @@ object TypeChecker {
 
   def visit(node: Node,ctx:HNode): Seq[String] = {
     node match {
-      case e: Goal => visit(e.main, null) :++ e.classes.flatMap(visit(_, null))
+      case e: Goal =>
+        visit(e.main, hierarchy.main) :++
+          e.classes.flatMap(p => visit(p, ctx.findClass(p.ident).get))
       case e: MainClass =>
         classes.addOne(e.ident)
-        visit(e.statement, ctx.findMethod(e.ident,Seq[Type](ArrType(StringType))).get)
+        visit(e.statement, ctx)
 
       case e: Clazz =>
         val newCtx = ctx.findClass(e.ident).get
-       ( e.varDecs.flatMap(visit(_, newCtx)) :++ e.methods.flatMap(visit(_, newCtx))).to(mutable.ArrayBuffer)
+        e.varDecs.flatMap(visit(_, newCtx)) :++ e.methods.flatMap(visit(_, newCtx))
       case e: MethodDec =>
         val newCtx = ctx.findMethod(e.ident,e.params.types).get
         var a = e.varDecs.flatMap(visit(_, newCtx))
@@ -66,12 +68,12 @@ object TypeChecker {
         val (b, t1) = visitExp(e.ret, newCtx)
         a :++= b
         if (t1 != e.tipe && t1 != SomeType)
-          a :++= (e.ret.line + ":Error: expected " + e.tipe + " found " + t1 + ".")
+          a :+= (e.ret.line + ":Error: expected " + e.tipe + " found " + t1 + ".")
         a
 
       case e: VarDeclaration =>
         typeExist(e.tipe,e.line)
-        var a = Seq()
+        var a = Seq[String]()
         //todo check if name declared in current scope
         if(ctx.fields.keys.count(_ == e.ident) > 1)
           a :+= e.line + ":Error: duplicated identifier "+ e.ident+"."
@@ -84,10 +86,12 @@ object TypeChecker {
         var (b, tipe) = visitExp(e.value, ctx)
         var a = Seq[String]()
         a :++= b
-        if(ctx.getVar(e.ident).isEmpty)
+        if(ctx.getVar(e.ident).isEmpty) {
           a :+= (e.line + ":Error: Tried assigning to uninitialized identifier " + e.ident + ".")
-        else
-          throw new TypeCheckerError
+          println("here")
+        }
+        //        else
+//          throw new TypeCheckerError
         var t = ctx.getVar(e.ident).get
 
         val c1 = typeExist(t,e.line)
@@ -116,9 +120,9 @@ object TypeChecker {
                   //type not found
                   a :+= e.line + ":Error: lambda " + i + " not found."
                 }
-              case _ => a :+= e.line + ":Error: can't assign lambda to "+ _ + "."
+              case i:Type => a :+= e.line + ":Error: can't assign lambda to "+ i + "."
             }
-          case p: LambdaBlock =>
+          case p: LambdaBlock => //todo remove return type
             t match {
               case i:IdentType =>
                 val l = hierarchy.findLambda(i.ident)
@@ -133,16 +137,16 @@ object TypeChecker {
                   //type not found
                   a :+= e.line + ":Error: lambda " + i + " not found."
                 }
-              case _ => a :+= e.line + ":Error: can't assign lambda to "+ _ + "."
+              case p => a :+= e.line + ":Error: can't assign lambda to "+ p.toString + "."
             }
-          case _ =>
+          case p:Node =>
             if(typeEqual(t,tipe))
               a = a :+ (e.line + ":Error: Mismatched types " + t + " and " + tipe + ".")
         }
         a
 
       case e: ArrAssign =>
-        var a = Seq()
+        var a = Seq[String]()
         val(b,t3) = visitExp(e.value,ctx)
         val(c,t2) = visitExp(e.offset,ctx)
 
@@ -229,7 +233,7 @@ object TypeChecker {
           a = a :+ (e.line + ":Error: Cannot apply && to " + t1 + " and " + t2 + ".")
         (a,BoolType)
       case e: Ident =>
-        var a = Seq()
+        var a = Seq[String]()
         val t = ctx.getVar(e.ident)
         val t1 = if(t.isEmpty) {
           a :+= e.line +":Error: variable "+e.ident + " not found."
@@ -261,25 +265,33 @@ object TypeChecker {
         var a = Seq[String]()
         val (b, t1) = visitExp(e.left, ctx)
         a = a :++ b
-        if (!t1.isInstanceOf[IdentType])
-          a :+ (e.line + ":Error: expected class found " + t1 + ".")
-        else if(!classSymbols.contains(t1.toString))
-          a :+ (e.line + ":Error: class "+t1.toString+ " not found.")
+        if(t1 == SomeType)
+          return (a,SomeType)
+        val tmp = hierarchy.findClass(t1.toString)
+
+        if(!t1.isInstanceOf[IdentType])
+          a :+= (e.line + ":Error: expected a class found " + t1 + ".")
+        else if(tmp.isEmpty)
+          a :+= e.line + ":Error: class "+tmp + " not found."
+        else if(!hierarchy.containsClass(t1.toString))
+          a :+= (e.line + ":Error: class "+t1.toString+ " not found.")
+
+
         val typeArr = e.args.map(p => {
-          val (b, t0) = visitExp(p, env)
+          val (b, t0) = visitExp(p, ctx)
           a = a :++ b
           t0
         })
-        println(e.line)
+        //println(e.line)
         val outType = t1 match {
           case i: IdentType =>
 
-            classSymbols(i.ident).getMethodType(e.funct, typeArr).getOrElse(throw new TypeCheckerError)
+            //classSymbols(i.ident).getMethodType(e.funct, typeArr).getOrElse(throw new TypeCheckerError)
           case _ => SomeType
         }
 
         //val outType = if(t1.isInstanceOf[IdentType]) classSymbols.get(t1.asInstanceOf[IdentType].ident).get.getMethodType(e.funct,typeArr)
-        (a, outType)
+        (a, VoidType)
 
       case e: LengthExpression =>
         var a = Seq[String]()
@@ -324,14 +336,11 @@ object TypeChecker {
         (b, t1)
       case e: LambdaBlock =>
         var a = Seq[String]()
-        val (b,t1) = visitExp(e.returnExp,)  //todo argument should be something based on what lambda can see
-        a :++= b
-        (a,t1)
-      /*
-        var a = e.vars.flatMap(p => visit(p, newEnv))
-        a = a :++ e.statements.flatMap(p => visit(p, newEnv))
-        val (b, t1) = visitExp(e.returnExp, newEnv)
-        (a :++ b, t1)*/
+        for(i <-e.statements) {
+          val b = visit(i,ctx)
+          a :++= b
+        }
+        (a,VoidType)
 
       case _ => throw new NotImplementedError("Shouldn't be here")
     }

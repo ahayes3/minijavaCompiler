@@ -23,13 +23,13 @@ class CNode(ident:String, parent:Option[HNode],val clazz:Clazz, field:mutable.Ha
 
   val methods:ArrayBuffer[MNode] = new ArrayBuffer[MNode]()
   val children:ArrayBuffer[CNode] = new ArrayBuffer[CNode]()
+  if(clazz != null) {
+    clazz.methods.foreach(p => {
+      this.methods += new MNode(p.ident, Some(this), p.tipe, p.params, new mutable.HashMap(), p)
+    })
 
-  clazz.methods.foreach(p => {
-    this.methods += new MNode(p.ident,Some(this),p.tipe,p.params,p)
-  })
-
-  clazz.varDecs.foreach(p => this.fields.put(p.ident,p.tipe))
-
+    clazz.varDecs.foreach(p => this.fields.put(p.ident, p.tipe))
+  }
   private def this(ident:String,fields:mutable.HashMap[String,Type]) {
     this(ident,None,null,fields)
   }
@@ -71,14 +71,17 @@ class CNode(ident:String, parent:Option[HNode],val clazz:Clazz, field:mutable.Ha
 
   override def getThis: CNode = this
 }
-class MNode(ident:String, parent:Option[HNode],var rType:Type, val parameters: Parameters,field:mutable.HashMap[String,Type]) extends HNode(ident,parent,field) {
-  def this(ident:String,parent:Option[HNode],rType:Type,parameters:Parameters, mDec:MethodDec) {
-    this(ident,parent,rType,parameters)
+class MNode(ident:String, parent:Option[HNode],var rType:Type, val parameters: Parameters,field:mutable.HashMap[String,Type],mDec:MethodDec) extends HNode(ident,parent,field) {
+  if(mDec!= null) {
     mDec.varDecs.foreach(p => fields.put(p.ident,p.tipe))
-
+    mDec.params.param.foreach(p => fields.put(p._2,p._1))
   }
+
+  //  def this(ident:String,parent:Option[HNode],rType:Type,parameters:Parameters) {
+//    this(ident,parent,rType,parameters)
+//  }
   def this(ident:String,parent:Option[HNode],rType: Type, parameters:Parameters) {
-    this(ident,parent,rType,parameters,new mutable.HashMap[String,Type]())
+    this(ident,parent,rType,parameters,new mutable.HashMap[String,Type](),null)
   }
 
 
@@ -87,7 +90,7 @@ class MNode(ident:String, parent:Option[HNode],var rType:Type, val parameters: P
   override def findMethod(ident: String, args:Seq[Type]): Option[MNode] = None
 
   override def cloneSingle(): HNode = {
-    new MNode(this.ident,None,this.rType,parameters,this.fields)
+    new MNode(this.ident,None,this.rType,parameters,this.fields,mDec)
   }
 
   override def getThis: CNode = {
@@ -118,13 +121,24 @@ class LNode(ident:String, val lambdaI:LambdaI) extends HNode(ident,None) {
 }
 
 object Object extends CNode("java/lang/Object", None,null,new mutable.HashMap[String,Type]())
+class MainNode(ident:String,parent:Option[HNode],mainClass:MainClass ) extends HNode(ident,parent) {
+  override def findClass(ident: String): Option[CNode] = None
 
-class Hierarchy {
+  override def findMethod(ident: String, args: Seq[Type]): Option[MNode] = None
+
+  override def getThis: CNode = {
+    throw new HierarchyError
+  }
+
+  override def cloneSingle(): HNode = ???
+}
+class Hierarchy(mClass:MainClass) {
   val head:CNode = Object
+  val main:MainNode = new MainNode(mClass.ident,Some(head),mClass)
   val lambdas = new ArrayBuffer[LNode]()
 
   def addClass(clazz:Clazz): Unit = {
-    val parent = findClass(clazz.ident)
+    val parent = findClass(clazz.parent)
     parent.getOrElse(throw new NodeNotFoundException).children += new CNode(clazz.ident,parent,clazz,new mutable.HashMap[String,Type]())
   }
   def addLambda(lambda:LambdaI): Unit = {
