@@ -289,7 +289,7 @@ object TypeChecker {
             //classSymbols(i.ident).getMethodType(e.funct, typeArr).getOrElse(throw new TypeCheckerError)
           case _ => SomeType
         }
-
+        // get type
         //val outType = if(t1.isInstanceOf[IdentType]) classSymbols.get(t1.asInstanceOf[IdentType].ident).get.getMethodType(e.funct,typeArr)
         (a, VoidType)
 
@@ -310,7 +310,7 @@ object TypeChecker {
           a = a :+ (e.line + ":Error: expected int found " + t1 + ".")
         (a, ArrType(IntType))
       case e: NewIdentExpression =>
-        if (hierarchy.containsClass(e.ident)) //hierarchy contains identifer
+        if (!hierarchy.containsClass(e.ident)) //hierarchy contains identifer
           (Seq(e.line + ":Error: class " + e.ident + " not found."), SomeType)
         else {
           (Seq(), IdentType(e.ident))
