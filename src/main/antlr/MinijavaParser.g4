@@ -6,7 +6,7 @@ options {
 goal: mainClass (classDeclaration|lambdaDeclaration)* EOF;
 mainClass: CLASS identifier LBRACE PUBLIC STATIC VOID MAIN LPAREN STRING LBRACK RBRACK identifier RPAREN LBRACE statement RBRACE RBRACE;
 classDeclaration: CLASS identifier (EXTENDS identifier)? LBRACE varDeclaration* methodDeclaration* statement* RBRACE;
-lambdaDeclaration: LAMBDA identifier LBRACE (type|VOID) identifier param SEMIC RBRACE;
+lambdaDeclaration: LAMBDA identifier LBRACE VOID identifier param SEMIC RBRACE;
 varDeclaration: type identifier SEMIC;
 methodDeclaration: PUBLIC type identifier param LBRACE varDeclaration* statement* RETURN expression SEMIC RBRACE;
 param: LPAREN (type identifier (COMMA type identifier)*)? RPAREN;
@@ -33,5 +33,5 @@ expression: expression OP expression
           | NEG expression
           | LPAREN expression RPAREN;
 lambda: param ARROW expression
-      | param ARROW LBRACE varDeclaration* SEMIC RBRACE;
+      | param ARROW LBRACE statement* SEMIC RBRACE;
 identifier: IDENT;

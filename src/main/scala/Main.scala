@@ -26,6 +26,10 @@ object Main {
       typeErrors.foreach(println(_))
       System.exit(1)
     }
+    else
+      println("Step 2 successful")
+
+
 
     //val bytes = GenerateCode(ast)
 

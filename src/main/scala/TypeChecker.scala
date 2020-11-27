@@ -113,8 +113,6 @@ object TypeChecker {
                   //check param and return
                   if(l.get.method.parameters.types != p.params.types)
                     a :+= e.line + ":Error: mismatched parameters "+ l.get.method.parameters.types +" and "+ p.params.types + "."
-                  if(!typeEqual(l.get.method.rType,tipe))
-                    a :+= e.line + ":Error: mismatched return types " + l.get.method.rType + " and "+ tipe
                 }
                 else {
                   //type not found
@@ -130,8 +128,6 @@ object TypeChecker {
                   //check param and return
                   if(l.get.method.parameters.types != p.params.types)
                     a :+= e.line + ":Error: mismatched parameters "+ l.get.method.parameters.types +" and "+ p.params.types + "."
-                  if(!typeEqual(l.get.method.rType,tipe))
-                    a :+= e.line + ":Error: mismatched return types " + l.get.method.rType + " and "+ tipe
                 }
                 else {
                   //type not found
@@ -140,7 +136,7 @@ object TypeChecker {
               case p => a :+= e.line + ":Error: can't assign lambda to "+ p.toString + "."
             }
           case p:Node =>
-            if(typeEqual(t,tipe))
+            if(!typeEqual(t,tipe))
               a = a :+ (e.line + ":Error: Mismatched types " + t + " and " + tipe + ".")
         }
         a
@@ -282,16 +278,16 @@ object TypeChecker {
           a = a :++ b
           t0
         })
-        //println(e.line)
-        val outType = t1 match {
-          case i: IdentType =>
 
-            //classSymbols(i.ident).getMethodType(e.funct, typeArr).getOrElse(throw new TypeCheckerError)
-          case _ => SomeType
+        val cl = hierarchy.findClass(t1.toString).get
+        val out = cl.findMethod(e.funct,typeArr)
+
+        if(out.isEmpty) {
+          a :+= e.line + ":Error: class " + t1 + " doesn't contain method "+ e.funct + "."
+          (a,SomeType)
         }
-        // get type
-        //val outType = if(t1.isInstanceOf[IdentType]) classSymbols.get(t1.asInstanceOf[IdentType].ident).get.getMethodType(e.funct,typeArr)
-        (a, VoidType)
+        else
+          (a,out.get.rType)
 
       case e: LengthExpression =>
         var a = Seq[String]()
