@@ -187,9 +187,9 @@ object AstBuilder {
   def lambdaI(ctx:LambdaDeclarationContext):LambdaI = {
     val children = ctx.children.asScala
     val ident = identifier(children(1).asInstanceOf[IdentifierContext])
-    val mTipe = tipe(children(3).asInstanceOf[TypeContext])
+    //val mTipe = tipe(children(3).asInstanceOf[TypeContext])
     val mIdent = identifier(children(4).asInstanceOf[IdentifierContext])
     val params = parameters(children(5).asInstanceOf[ParamContext])
-    LambdaI(ident,mIdent,mTipe,params,ctx.getStart.getLine)
+    LambdaI(ident,mIdent,VoidType,params,ctx.getStart.getLine)
   }
 }

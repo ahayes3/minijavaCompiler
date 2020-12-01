@@ -28,10 +28,5 @@ object Main {
     }
     else
       println("Step 2 successful")
-
-
-
-    //val bytes = GenerateCode(ast)
-
   }
 }

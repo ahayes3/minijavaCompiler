@@ -45,8 +45,15 @@ class CNode(ident:String, parent:Option[HNode],val clazz:Clazz, field:mutable.Ha
   def findClass(ident:String):Option[CNode] = {
     if(this.ident == ident)
       Some(this)
-    else if(children.nonEmpty)
-      children.find(p => p.findClass(ident).nonEmpty)
+    else if(children.nonEmpty) {
+      for(i <- children) {
+        val a = i.findClass(ident)
+        if(a.nonEmpty)
+          return a
+      }
+      return None
+      //children.find(p => p.findClass(ident).nonEmpty)
+    }
     else None
   }
   def isChildOf(ident:String):Boolean = {
@@ -55,14 +62,33 @@ class CNode(ident:String, parent:Option[HNode],val clazz:Clazz, field:mutable.Ha
     else if(parent.get.ident== ident)
       true
     else if(parent.get.isInstanceOf[CNode])
-      parent.asInstanceOf[CNode].isChildOf(ident)
+      parent.get.asInstanceOf[CNode].isChildOf(ident)
     else
       throw new HierarchyError
   }
 
-  override def findMethod(ident: String, args:Seq[Type]): Option[MNode] = {
-    methods.find(p => p.ident ==ident && p.parameters.types == args)
+  override def findMethod(ident: String, args:Seq[Type]): Option[MNode] = { //args must be subclass of parameters
+    //methods.find(p => p.ident ==ident && equalsOrSub(p.parameters.types,args))
+    for(i <- methods) {
+      if(i.ident == ident && equalsOrSub(i.parameters.types,args))
+        return Some(i)
+    }
+    return None
+  }
 
+  def equalsOrSub(params:Seq[Type],args:Seq[Type]): Boolean = {
+    if(params.length != args.length)
+      return false
+    for(i <- params.indices) {
+      args(i) match {
+        case e:IdentType =>
+          val tmp = TypeChecker.hierarchy.findClass(e.toString).getOrElse(throw new HierarchyError)
+          if(!tmp.isChildOf(params(i).toString) && e.ident != params(i).toString)
+            return false
+        case e:Type => if(e!= params(i)) return false;
+      }
+    }
+    true
   }
 
   override def cloneSingle(): HNode = {

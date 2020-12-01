@@ -39,14 +39,14 @@ object TypeChecker {
     //inheritance = InheritanceNode("java/lang/Object", None, new ArrayBuffer[InheritanceNode]())
     this.hierarchy = hierarchy
     classes.clear()
-    visit(ast, hierarchy.head)
+    visit(ast, this.hierarchy.head)
   }
 
   def visit(node: Node,ctx:HNode): Seq[String] = {
     node match {
       case e: Goal =>
         visit(e.main, hierarchy.main) :++
-          e.classes.flatMap(p => visit(p, ctx.findClass(p.ident).get))
+          e.classes.flatMap(p => visit(p, ctx))
       case e: MainClass =>
         classes.addOne(e.ident)
         visit(e.statement, ctx)

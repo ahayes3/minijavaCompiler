@@ -10,12 +10,11 @@ class Lambdas {
         a = () -> 56;
         b = () -> {
             System.out.println(51);
-            return 1;
         };
         return 15;
     }
 }
 
 lambda DoThing {
-    int run();
+    void run();
 }

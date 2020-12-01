@@ -1289,7 +1289,6 @@ public class MinijavaParser extends Parser {
 			return getRuleContext(ExpressionContext.class,0);
 		}
 		public TerminalNode LBRACE() { return getToken(MinijavaParser.LBRACE, 0); }
-		public TerminalNode SEMIC() { return getToken(MinijavaParser.SEMIC, 0); }
 		public TerminalNode RBRACE() { return getToken(MinijavaParser.RBRACE, 0); }
 		public List<StatementContext> statement() {
 			return getRuleContexts(StatementContext.class);
@@ -1321,7 +1320,7 @@ public class MinijavaParser extends Parser {
 		enterRule(_localctx, 20, RULE_lambda);
 		int _la;
 		try {
-			setState(256);
+			setState(255);
 			_errHandler.sync(this);
 			switch ( getInterpreter().adaptivePredict(_input,19,_ctx) ) {
 			case 1:
@@ -1359,8 +1358,6 @@ public class MinijavaParser extends Parser {
 					_la = _input.LA(1);
 				}
 				setState(253);
-				match(SEMIC);
-				setState(254);
 				match(RBRACE);
 				}
 				break;
@@ -1404,7 +1401,7 @@ public class MinijavaParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(258);
+			setState(257);
 			match(IDENT);
 			}
 		}
@@ -1443,7 +1440,7 @@ public class MinijavaParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3*\u0107\4\2\t\2\4"+
+		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3*\u0106\4\2\t\2\4"+
 		"\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b\4\t\t\t\4\n\t\n\4\13\t"+
 		"\13\4\f\t\f\4\r\t\r\3\2\3\2\3\2\7\2\36\n\2\f\2\16\2!\13\2\3\2\3\2\3\3"+
 		"\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3"+
@@ -1461,12 +1458,12 @@ public class MinijavaParser extends Parser {
 		"\3\13\3\13\3\13\3\13\3\13\3\13\3\13\3\13\7\13\u00e5\n\13\f\13\16\13\u00e8"+
 		"\13\13\5\13\u00ea\n\13\3\13\3\13\7\13\u00ee\n\13\f\13\16\13\u00f1\13\13"+
 		"\3\f\3\f\3\f\3\f\3\f\3\f\3\f\3\f\7\f\u00fb\n\f\f\f\16\f\u00fe\13\f\3\f"+
-		"\3\f\3\f\5\f\u0103\n\f\3\r\3\r\3\r\2\3\24\16\2\4\6\b\n\f\16\20\22\24\26"+
-		"\30\2\2\2\u011f\2\32\3\2\2\2\4$\3\2\2\2\6\66\3\2\2\2\bQ\3\2\2\2\nZ\3\2"+
-		"\2\2\f^\3\2\2\2\16t\3\2\2\2\20\u0088\3\2\2\2\22\u00b3\3\2\2\2\24\u00cd"+
-		"\3\2\2\2\26\u0102\3\2\2\2\30\u0104\3\2\2\2\32\37\5\4\3\2\33\36\5\6\4\2"+
-		"\34\36\5\b\5\2\35\33\3\2\2\2\35\34\3\2\2\2\36!\3\2\2\2\37\35\3\2\2\2\37"+
-		" \3\2\2\2 \"\3\2\2\2!\37\3\2\2\2\"#\7\2\2\3#\3\3\2\2\2$%\7\3\2\2%&\5\30"+
+		"\3\f\5\f\u0102\n\f\3\r\3\r\3\r\2\3\24\16\2\4\6\b\n\f\16\20\22\24\26\30"+
+		"\2\2\2\u011e\2\32\3\2\2\2\4$\3\2\2\2\6\66\3\2\2\2\bQ\3\2\2\2\nZ\3\2\2"+
+		"\2\f^\3\2\2\2\16t\3\2\2\2\20\u0088\3\2\2\2\22\u00b3\3\2\2\2\24\u00cd\3"+
+		"\2\2\2\26\u0101\3\2\2\2\30\u0103\3\2\2\2\32\37\5\4\3\2\33\36\5\6\4\2\34"+
+		"\36\5\b\5\2\35\33\3\2\2\2\35\34\3\2\2\2\36!\3\2\2\2\37\35\3\2\2\2\37 "+
+		"\3\2\2\2 \"\3\2\2\2!\37\3\2\2\2\"#\7\2\2\3#\3\3\2\2\2$%\7\3\2\2%&\5\30"+
 		"\r\2&\'\7\r\2\2\'(\7\4\2\2()\7\5\2\2)*\7\6\2\2*+\7\7\2\2+,\7\17\2\2,-"+
 		"\7\b\2\2-.\7\21\2\2./\7\22\2\2/\60\5\30\r\2\60\61\7\20\2\2\61\62\7\r\2"+
 		"\2\62\63\5\22\n\2\63\64\7\16\2\2\64\65\7\16\2\2\65\5\3\2\2\2\66\67\7\3"+
@@ -1523,14 +1520,13 @@ public class MinijavaParser extends Parser {
 		"\u00cf\3\2\2\2\u00ed\u00d2\3\2\2\2\u00ed\u00d5\3\2\2\2\u00ed\u00da\3\2"+
 		"\2\2\u00ed\u00dd\3\2\2\2\u00ee\u00f1\3\2\2\2\u00ef\u00ed\3\2\2\2\u00ef"+
 		"\u00f0\3\2\2\2\u00f0\25\3\2\2\2\u00f1\u00ef\3\2\2\2\u00f2\u00f3\5\16\b"+
-		"\2\u00f3\u00f4\7%\2\2\u00f4\u00f5\5\24\13\2\u00f5\u0103\3\2\2\2\u00f6"+
+		"\2\u00f3\u00f4\7%\2\2\u00f4\u00f5\5\24\13\2\u00f5\u0102\3\2\2\2\u00f6"+
 		"\u00f7\5\16\b\2\u00f7\u00f8\7%\2\2\u00f8\u00fc\7\r\2\2\u00f9\u00fb\5\22"+
 		"\n\2\u00fa\u00f9\3\2\2\2\u00fb\u00fe\3\2\2\2\u00fc\u00fa\3\2\2\2\u00fc"+
-		"\u00fd\3\2\2\2\u00fd\u00ff\3\2\2\2\u00fe\u00fc\3\2\2\2\u00ff\u0100\7\30"+
-		"\2\2\u0100\u0101\7\16\2\2\u0101\u0103\3\2\2\2\u0102\u00f2\3\2\2\2\u0102"+
-		"\u00f6\3\2\2\2\u0103\27\3\2\2\2\u0104\u0105\7\'\2\2\u0105\31\3\2\2\2\26"+
-		"\35\37:@FLfl}\u0080\u0088\u008e\u00b3\u00cd\u00e6\u00e9\u00ed\u00ef\u00fc"+
-		"\u0102";
+		"\u00fd\3\2\2\2\u00fd\u00ff\3\2\2\2\u00fe\u00fc\3\2\2\2\u00ff\u0100\7\16"+
+		"\2\2\u0100\u0102\3\2\2\2\u0101\u00f2\3\2\2\2\u0101\u00f6\3\2\2\2\u0102"+
+		"\27\3\2\2\2\u0103\u0104\7\'\2\2\u0104\31\3\2\2\2\26\35\37:@FLfl}\u0080"+
+		"\u0088\u008e\u00b3\u00cd\u00e6\u00e9\u00ed\u00ef\u00fc\u0101";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {
