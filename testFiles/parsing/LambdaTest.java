@@ -5,7 +5,7 @@ class LambdaTest {
 }
 class Lambdas {
     public int test() {
-        DoThing a;
+        Bean a;
         DoThing b;
         a = () -> 56;
         b = () -> {

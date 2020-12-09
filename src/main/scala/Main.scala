@@ -28,5 +28,11 @@ object Main {
     }
     else
       println("Step 2 successful")
+
+    //todo
+    //GenerateCode(ast)
   }
+
+
+
 }

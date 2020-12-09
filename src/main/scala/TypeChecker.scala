@@ -55,7 +55,7 @@ object TypeChecker {
         val newCtx = ctx.findClass(e.ident).get
         e.varDecs.flatMap(visit(_, newCtx)) :++ e.methods.flatMap(visit(_, newCtx))
       case e: MethodDec =>
-        val newCtx = ctx.findMethod(e.ident,e.params.types).get
+        val newCtx = ctx.findMethod(e.ident).get
         var a = e.varDecs.flatMap(visit(_, newCtx))
         a :++= e.statements.flatMap(visit(_, newCtx))
 
@@ -118,6 +118,7 @@ object TypeChecker {
                   //type not found
                   a :+= e.line + ":Error: lambda " + i + " not found."
                 }
+              case SomeType =>
               case i:Type => a :+= e.line + ":Error: can't assign lambda to "+ i + "."
             }
           case p: LambdaBlock => //todo remove return type
@@ -280,7 +281,7 @@ object TypeChecker {
         })
 
         val cl = hierarchy.findClass(t1.toString).get
-        val out = cl.findMethod(e.funct,typeArr)
+        val out = cl.findMethod(e.funct)
 
         if(out.isEmpty) {
           a :+= e.line + ":Error: class " + t1 + " doesn't contain method "+ e.funct + "."

@@ -14,7 +14,7 @@ abstract class HNode(val ident:String,val parent:Option[HNode],val fields:mutabl
     this.fields.get(ident)
   }
   def findClass(ident:String):Option[CNode]
-  def findMethod(ident:String,args:Seq[Type]):Option[MNode]
+  def findMethod(ident:String):Option[MNode]
   def getThis: CNode
 
   def cloneSingle():HNode
@@ -67,13 +67,13 @@ class CNode(ident:String, parent:Option[HNode],val clazz:Clazz, field:mutable.Ha
       throw new HierarchyError
   }
 
-  override def findMethod(ident: String, args:Seq[Type]): Option[MNode] = { //args must be subclass of parameters
+  override def findMethod(ident: String): Option[MNode] = { //args must be subclass of parameters
     //methods.find(p => p.ident ==ident && equalsOrSub(p.parameters.types,args))
     for(i <- methods) {
-      if(i.ident == ident && equalsOrSub(i.parameters.types,args))
+      if(i.ident == ident)
         return Some(i)
     }
-    return None
+    None
   }
 
   def equalsOrSub(params:Seq[Type],args:Seq[Type]): Boolean = {
@@ -98,6 +98,7 @@ class CNode(ident:String, parent:Option[HNode],val clazz:Clazz, field:mutable.Ha
   override def getThis: CNode = this
 }
 class MNode(ident:String, parent:Option[HNode],var rType:Type, val parameters: Parameters,field:mutable.HashMap[String,Type],mDec:MethodDec) extends HNode(ident,parent,field) {
+  val locals = new mutable.HashMap[String,(Type,Int)]()
   if(mDec!= null) {
     mDec.varDecs.foreach(p => fields.put(p.ident,p.tipe))
     mDec.params.param.foreach(p => fields.put(p._2,p._1))
@@ -113,7 +114,7 @@ class MNode(ident:String, parent:Option[HNode],var rType:Type, val parameters: P
 
   override def findClass(ident: String): Option[CNode] = None
 
-  override def findMethod(ident: String, args:Seq[Type]): Option[MNode] = None
+  override def findMethod(ident: String): Option[MNode] = None
 
   override def cloneSingle(): HNode = {
     new MNode(this.ident,None,this.rType,parameters,this.fields,mDec)
@@ -135,7 +136,7 @@ class LNode(ident:String, val lambdaI:LambdaI) extends HNode(ident,None) {
 
   override def findClass(ident: String): Option[CNode] = None
 
-  override def findMethod(ident: String, args:Seq[Type]): Option[MNode] = Some(method)
+  override def findMethod(ident: String): Option[MNode] = Some(method)
 
   override def cloneSingle(): HNode = {
     new LNode(ident,null)
@@ -150,7 +151,7 @@ object Object extends CNode("java/lang/Object", None,null,new mutable.HashMap[St
 class MainNode(ident:String,parent:Option[HNode],mainClass:MainClass ) extends HNode(ident,parent) {
   override def findClass(ident: String): Option[CNode] = None
 
-  override def findMethod(ident: String, args: Seq[Type]): Option[MNode] = None
+  override def findMethod(ident: String): Option[MNode] = None
 
   override def getThis: CNode = {
     throw new HierarchyError
