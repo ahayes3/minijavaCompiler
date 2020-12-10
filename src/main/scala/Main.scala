@@ -10,7 +10,10 @@ object Main {
       println("File not found.")
       System.exit(1)
     }
-    val tree = Parse(path)
+    val (tree,parsed) = Parse(path)
+
+    if(!parsed)
+      System.exit(-1)
 
     val ast = AstBuilder(tree)
 
@@ -32,7 +35,4 @@ object Main {
     //todo
     //GenerateCode(ast)
   }
-
-
-
 }

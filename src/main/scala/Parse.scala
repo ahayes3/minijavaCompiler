@@ -5,7 +5,7 @@ import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 import scala.io.Source
 
 object Parse {
-  def apply(str:String): MinijavaParser.GoalContext = {
+  def apply(str:String): (MinijavaParser.GoalContext,Boolean) = {
     val file = Some(Source.fromFile(str))
     val lines = file.getOrElse(throw new FileNotFoundException()).getLines.mkString("\n")
     file.get.close()
@@ -19,10 +19,13 @@ object Parse {
     mjParser.addErrorListener(errorListener)
     val tree = mjParser.goal()
 
-    if(errorListener.errors.isEmpty)
+    val success = if(errorListener.errors.isEmpty) {
       println("Parse successful")
-    else
+      true
+    } else {
       errorListener.errors.foreach(Console.err.println)
-    tree
+      false
+    }
+    (tree,success)
   }
 }

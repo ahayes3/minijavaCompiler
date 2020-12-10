@@ -98,7 +98,7 @@ class CNode(ident:String, parent:Option[HNode],val clazz:Clazz, field:mutable.Ha
   override def getThis: CNode = this
 }
 class MNode(ident:String, parent:Option[HNode],var rType:Type, val parameters: Parameters,field:mutable.HashMap[String,Type],mDec:MethodDec) extends HNode(ident,parent,field) {
-  val locals = new mutable.HashMap[String,(Type,Int)]()
+  val locals = new mutable.HashMap[String,(Type,Int)]() //From name to current version of name
   if(mDec!= null) {
     mDec.varDecs.foreach(p => fields.put(p.ident,p.tipe))
     mDec.params.param.foreach(p => fields.put(p._2,p._1))

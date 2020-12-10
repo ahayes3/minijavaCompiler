@@ -32,6 +32,6 @@ expression: expression OP expression
           | NEW identifier LPAREN RPAREN
           | NEG expression
           | LPAREN expression RPAREN;
-lambda: param ARROW expression
-      | param ARROW LBRACE statement* RBRACE;
-identifier: IDENT;
+lambda: param ARROW LBRACE statement* RBRACE;//lambda: param ARROW expression
+identifier: IDENT;                           //      | param ARROW LBRACE statement* RBRACE;
+

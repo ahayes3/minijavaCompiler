@@ -199,7 +199,7 @@ object TypeChecker {
   }
 
   def visitExp(exp: Expression, ctx:HNode): (Seq[String], Type) = {
-    exp match {
+    val (err,t) = exp match {
       case e: MathExpression =>
         var a = Seq[String]()
         val (b, t1) = visitExp(e.left, ctx)
@@ -341,5 +341,7 @@ object TypeChecker {
 
       case _ => throw new NotImplementedError("Shouldn't be here")
     }
+    exp.tipe = t
+    (err,t)
   }
 }

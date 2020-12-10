@@ -5,9 +5,8 @@ class LambdaTest {
 }
 class Lambdas {
     public int test() {
-        Bean a;
         DoThing b;
-        a = () -> 56;
+        //a = () -> 56;
         b = () -> {
             System.out.println(51);
         };

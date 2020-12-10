@@ -5,7 +5,9 @@ trait Node {
 }
 trait Type
 trait Statement extends Node
-trait Expression extends Node
+trait Expression extends Node {
+  var tipe:Type = _
+}
 trait Lambda extends Expression
 
 case class Goal(main:MainClass,classes: Seq[Clazz],lambdas:Seq[LambdaI],line:Int) extends Node {
