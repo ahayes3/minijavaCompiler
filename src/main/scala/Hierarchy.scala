@@ -16,7 +16,7 @@ abstract class HNode(val ident:String,val parent:Option[HNode],val fields:mutabl
   def findClass(ident:String):Option[CNode]
   def findMethod(ident:String):Option[MNode]
   def getThis: CNode
-
+  def getOwner(varName:String):Option[CNode]
   def cloneSingle():HNode
 }
 class CNode(ident:String, parent:Option[HNode],val clazz:Clazz, field:mutable.HashMap[String,Type]) extends HNode(ident,parent,field){
@@ -96,6 +96,14 @@ class CNode(ident:String, parent:Option[HNode],val clazz:Clazz, field:mutable.Ha
   }
 
   override def getThis: CNode = this
+
+  override def getOwner(varName:String): Option[CNode] = {
+    if(this.fields.contains(varName))
+      Some(this)
+    else if(parent.nonEmpty)
+      parent.get.getOwner(varName)
+    else None
+  }
 }
 class MNode(ident:String, parent:Option[HNode],var rType:Type, val parameters: Parameters,field:mutable.HashMap[String,Type],mDec:MethodDec) extends HNode(ident,parent,field) {
   val locals = new mutable.HashMap[String,(Type,Int)]() //From name to current version of name
@@ -129,6 +137,10 @@ class MNode(ident:String, parent:Option[HNode],var rType:Type, val parameters: P
     else
       throw new HierarchyError
   }
+
+  override def getOwner(varName: String): Option[CNode] = {
+    parent.get.getOwner(varName)
+  }
 }
 
 class LNode(ident:String, val lambdaI:LambdaI) extends HNode(ident,None) {
@@ -145,19 +157,28 @@ class LNode(ident:String, val lambdaI:LambdaI) extends HNode(ident,None) {
   override def getThis: CNode = {
     throw new HierarchyError
   }
+
+  override def getOwner(varName: String): Option[CNode] = None
 }
 
 object Object extends CNode("java/lang/Object", None,null,new mutable.HashMap[String,Type]())
 class MainNode(ident:String,parent:Option[HNode],mainClass:MainClass ) extends HNode(ident,parent) {
+  val mainMethod = new MNode("main",
+    Some(this),VoidType,
+    new Parameters(Seq[(Type,String)]((ArrType(StringType),mainClass.strArgsIdent)),-1),
+    new mutable.HashMap[String,Type](),
+    null)
   override def findClass(ident: String): Option[CNode] = None
 
-  override def findMethod(ident: String): Option[MNode] = None
+  override def findMethod(ident: String): Option[MNode] = if(ident=="main") Some(mainMethod) else None
 
   override def getThis: CNode = {
     throw new HierarchyError
   }
 
   override def cloneSingle(): HNode = ???
+
+  override def getOwner(varName: String): Option[CNode] = ???
 }
 class Hierarchy(mClass:MainClass) {
   val head:CNode = Object

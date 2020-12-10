@@ -1,6 +1,5 @@
-import java.io.File
+import java.io.{File, FileOutputStream}
 import java.nio.file.{Files, Path}
-
 import scala.io.StdIn
 
 object Main {
@@ -32,7 +31,18 @@ object Main {
     else
       println("Step 2 successful")
 
-    //todo
-    //GenerateCode(ast)
+    val classes = GenerateCode(ast,hierarchy)
+    println("Code generated")
+    classes.foreach(p => {
+      if(Files.exists(Path.of("build/"+p._2+".class")))
+        Files.delete(Path.of("build/"+p._2+".class"))
+      val out = new File("build/"+p._2+".class")
+      val fos = new FileOutputStream(out.getPath)
+      try {
+        fos.write(p._1)
+        fos.flush()
+        fos.close()
+      }
+    })
   }
 }
