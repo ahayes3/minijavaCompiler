@@ -224,6 +224,7 @@ object GenerateCode {
     else {
       val toLoad = ctx.getVar(a.ident)
       val owner = ctx.getOwner(a.ident)
+      mv.visitVarInsn(Opcodes.ALOAD,0)
       mv.visitFieldInsn(Opcodes.GETFIELD,owner.get.ident,a.ident,getDescriptor(toLoad.get))
     }
 
