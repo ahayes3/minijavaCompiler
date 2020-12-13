@@ -1,4 +1,3 @@
-import org.objectweb.asm.util.CheckClassAdapter
 import org.objectweb.asm.{ClassWriter, Label, MethodVisitor, Opcodes}
 
 import scala.collection.mutable
@@ -25,16 +24,12 @@ class Counter() {
 
 class CodeGenerationError extends Exception {}
 
-//NOTES
-//Each lambda instance should generate a .class and put the bytes in lambdaClasses. The name will follow the name of the name of the class it is found in with $(number) appended
-
 object GenerateCode {
-  //val typeMap: Map[Type, String] = HashMap(IntType -> "I", BoolType -> "Z", ArrType(IntType) -> "[I", ArrType(StringType) -> "[java/lang/String")
   var hier: Hierarchy = _
 
   val lambdaClasses: mutable.ArrayBuffer[(Array[Byte], String)] = new ArrayBuffer[(Array[Byte], String)]()
   val lambdaCounts = new mutable.HashMap[String, Int]
-  val lambdaWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES)
+  //val lambdaWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES)
 
   def apply(goal: Goal, ctx: Hierarchy): Seq[(Array[Byte], String)] = {
     hier = ctx
@@ -72,10 +67,8 @@ object GenerateCode {
   }
 
   def visitClass(clazz: Clazz, cw: ClassWriter, ctx: CNode): Array[Byte] = {
-    //val checker = new CheckClassAdapter(cw)
 
     cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC, clazz.ident, null, clazz.parent, null)
-    val checker = new CheckClassAdapter(cw)
 
     val mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
     mv.visitVarInsn(Opcodes.ALOAD, 0)
@@ -88,21 +81,27 @@ object GenerateCode {
     clazz.methods.foreach(p => visitMethod(p, cw, ctx.findMethod(p.ident).get))
     cw.visitEnd()
 
-
     cw.toByteArray
   }
 
   def visitLambda(i: LambdaI, cw: ClassWriter): Array[Byte] = {
     cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT, i.ident, null, "java/lang/Object", null)
-    var mv = cw.visitMethod(0, "", "()V", null, null) //"abstract constructor"
+    var mv = cw.visitMethod(0,"<init>","()V",null,null)
     mv.visitCode()
-    mv.visitVarInsn(Opcodes.ALOAD, 0)
-    mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "", "()V", false)
+    mv.visitVarInsn(Opcodes.ALOAD,0)
+    mv.visitMethodInsn(Opcodes.INVOKESPECIAL,"java/lang/Object","<init>","()V",false)
     mv.visitInsn(Opcodes.RETURN)
-    mv.visitMaxs(-1, -1)
+    mv.visitMaxs(-1,-1)
     mv.visitEnd()
+//    var mv = cw.visitMethod(Opcodes.ACC_ABSTRACT, "<init>", "()V", null, null) //"abstract constructor"
+//    mv.visitCode()
+//    mv.visitVarInsn(Opcodes.ALOAD, 0)
+//    mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
+//    mv.visitInsn(Opcodes.RETURN)
+//    mv.visitMaxs(-1, -1)
+//    mv.visitEnd()
 
-    mv = cw.visitMethod(Opcodes.ACC_PUBLIC, i.methodIdent, getDescriptor(i.params.types, i.mTipe), "()V", null)
+    mv = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT, i.methodIdent, getDescriptor(i.params.types, i.mTipe), "()V", null)
     mv.visitEnd()
     cw.visitEnd()
     cw.toByteArray
@@ -114,13 +113,10 @@ object GenerateCode {
 
   def visitMethod(meth: MethodDec, cw: ClassWriter, ctx: MNode): Unit = {
     val mv = cw.visitMethod(Opcodes.ACC_PUBLIC, meth.ident, getDescriptor(meth.params.types, meth.tipe), null, null)
-
-    //val = new mutable.HashMap[(String, Int), Local]()
     val ctr = new Counter()
     for (i <- meth.params.types.indices) {
       val ident = meth.params.param(i)._2
       val tipe = meth.params.param(i)._1
-      //val varNum = ctr.next()
       ctx.locals.put(ident, (tipe, ctr.next()))
     }
     mv.visitCode()
@@ -129,23 +125,6 @@ object GenerateCode {
     visitRet(meth.ret, meth.tipe, mv, ctx)
     println(meth.ident)
     mv.visitMaxs(0, 0) //args should be ignored and computed automatically
-//        try {
-//          for (i <- meth.params.types.indices) {
-//            val ident = meth.params.param(i)._2
-//            val tipe = meth.params.param(i)._1
-//            //val varNum = ctr.next()
-//            ctx.locals.put(ident, (tipe, ctr.next()))
-//          }
-//          mv.visitCode()
-//          visitCode(meth.varDecs, mv, ctx, ctr)
-//          visitCode(meth.statements, mv, ctx, ctr)
-//          visitRet(meth.ret, meth.tipe, mv, ctx)
-//          println(meth.ident)
-//          mv.visitMaxs(0, 0) //args should be ignored and computed automatically
-//        }
-//        catch {
-//          case e:Exception =>
-//        }
     mv.visitEnd()
     ctx.locals.clear()
   }
@@ -175,8 +154,6 @@ object GenerateCode {
   }
 
   def visitVarDec(v: VarDeclaration, mv: MethodVisitor, ctx: MNode, ctr: Counter): Unit = {
-    //locals.put("ABc",locals.size) //todo might need work
-    var ml = 0
     v.tipe match {
       case IntType =>
         ctx.locals.put(v.ident, (IntType, ctr.next()))
@@ -192,11 +169,13 @@ object GenerateCode {
   }
 
   def visitAssign(a: Assignment, mv: MethodVisitor, ctx: MNode, ctr: Counter): Unit = {
-    //val tipe = ctx.fields(a.ident)
     val tipe = ctx.getVar(a.ident).get
 
-    if (ctx.locals.contains(a.ident.toString)) { //todo
-      visitExp(a.value, mv, ctx)
+    if (ctx.locals.contains(a.ident)) {
+      if(hier.findLambda(tipe.toString).nonEmpty)
+        visitLambdaBlock(a.value.asInstanceOf[LambdaBlock],mv,ctx,tipe.asInstanceOf[IdentType])
+      else
+        visitExp(a.value, mv, ctx)
       val varNum = ctx.locals(a.ident)._2
       tipe match {
         case IntType | BoolType => mv.visitVarInsn(Opcodes.ISTORE, varNum)
@@ -206,7 +185,7 @@ object GenerateCode {
     else {
       mv.visitVarInsn(Opcodes.ALOAD, 0)
       if (hier.containsLambda(tipe.toString))
-        visitLambdaBlock(a.value.asInstanceOf[LambdaBlock], mv, ctx, tipe.asInstanceOf[IdentType])
+        visitLambdaBlock(a.value.asInstanceOf[LambdaBlock],mv, ctx, tipe.asInstanceOf[IdentType])
       else
         visitExp(a.value, mv, ctx)
 
@@ -224,27 +203,13 @@ object GenerateCode {
     else {
       val toLoad = ctx.getVar(a.ident)
       val owner = ctx.getOwner(a.ident)
-      mv.visitVarInsn(Opcodes.ALOAD,0)
+      mv.visitVarInsn(Opcodes.ALOAD,0) //This line was missing. It was the source of so much pain. AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
       mv.visitFieldInsn(Opcodes.GETFIELD,owner.get.ident,a.ident,getDescriptor(toLoad.get))
     }
 
     visitExp(a.offset, mv, ctx)
     visitExp(a.value, mv, ctx)
     mv.visitInsn(Opcodes.IASTORE)
-
-//    val toLoad = ctx.locals
-//    visitExp(a.offset, mv, ctx)
-//    visitExp(a.value, mv, ctx)
-//    if (ctx.locals.contains(a.ident)) {
-//      val v = ctx.locals(a.ident)._2
-//      //val varNum =((a.ident, v)).varNum
-//
-//      mv.visitInsn(Opcodes.IASTORE)
-//    }
-//    else {
-//      val tmp = ctx.getVar(a.ident).get
-//
-//    }
   }
 
   def visitPrint(statement: PrintStatement, mv: MethodVisitor, ctx: MNode): Unit = {
@@ -310,7 +275,6 @@ object GenerateCode {
       case e: Ident =>
         if (ctx.locals.contains(e.ident)) {
           val v = ctx.locals(e.ident)
-          //val v =((e.ident, ver._2))
           v._1 match {
             case IntType =>
               mv.visitVarInsn(Opcodes.ILOAD, v._2)
@@ -318,7 +282,6 @@ object GenerateCode {
               mv.visitVarInsn(Opcodes.ILOAD, v._2)
             case _: IdentType =>
               mv.visitVarInsn(Opcodes.ALOAD, v._2)
-            //println(v.varNum)
             case _ => throw new CodeGenerationError
           }
         }
@@ -345,12 +308,9 @@ object GenerateCode {
         visitExp(e.offset, mv, ctx)
         mv.visitInsn(Opcodes.IALOAD)
       case e: DotExpression =>
-        // println(e.funct)
-        //mv.visitVarInsn(Opcodes.ALOAD,0)
         visitExp(e.left, mv, ctx)
         val clazz = hier.findClass(e.left.tipe.toString).get
         val meth = clazz.findMethod(e.funct).get
-        //e.args.foreach(visitExp(_,mv,ctx))
         for (i <- e.args) {
           visitExp(i, mv, ctx)
         }
@@ -396,10 +356,33 @@ object GenerateCode {
     }
   }
 
-  def visitLambdaBlock(l: LambdaBlock, mv: MethodVisitor, ctx: MNode, tipe: IdentType): Unit = {
+  def visitLambdaBlock(l: LambdaBlock,mv:MethodVisitor, ctx: MNode, tipe: IdentType): Unit = { //todo create new version of this lambda on stack
+    val lambdaWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES)
     val thisClass = ctx.getThis.ident
     val num = lambdaCounts.get(thisClass)
-    lambdaWriter.visit(Opcodes.V11, Opcodes.ACC_PUBLIC, thisClass + "$" + num.get, null, tipe.ident, null)
+    val parent = hier.findLambda(tipe.ident).get
+    val lIdent = thisClass + "$" + num.get
+    lambdaWriter.visit(Opcodes.V11, Opcodes.ACC_PUBLIC, lIdent, null, tipe.ident, null)
+    //todo visit lambda method
+    var lmv = lambdaWriter.visitMethod(Opcodes.ACC_PUBLIC,"<init>","()V",null,null)
+    lmv.visitVarInsn(Opcodes.ALOAD,0)
+    lmv.visitMethodInsn(Opcodes.INVOKESPECIAL,parent.ident,"<init>","()V",false)
+    lmv.visitInsn(Opcodes.RETURN)
+    lmv.visitMaxs(-1,-1)
+    lmv.visitEnd()
+
+    lmv = lambdaWriter.visitMethod(Opcodes.ACC_PUBLIC,parent.method.ident,getDescriptor(parent.method.parameters.types,parent.method.rType),null,null)
+    visitCode(l.statements,lmv,ctx,new Counter)
+    lmv.visitInsn(Opcodes.RETURN)
+    lmv.visitMaxs(-1,-1)
+    lmv.visitEnd()
+    lambdaWriter.visitEnd()
+    lambdaCounts.remove(thisClass)
+    lambdaCounts.put(thisClass, num.get+1)
+    lambdaClasses.addOne((lambdaWriter.toByteArray,thisClass + "$"+num.get))
+    mv.visitTypeInsn(Opcodes.NEW,lIdent)
+    mv.visitInsn(Opcodes.DUP)
+    mv.visitMethodInsn(Opcodes.INVOKESPECIAL,lIdent,"<init>","()V",false)
   }
 
   def getDescriptor(t: Type): String = {

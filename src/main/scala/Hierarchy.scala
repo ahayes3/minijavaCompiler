@@ -144,7 +144,7 @@ class MNode(ident:String, parent:Option[HNode],var rType:Type, val parameters: P
 }
 
 class LNode(ident:String, val lambdaI:LambdaI) extends HNode(ident,None) {
-  val method:MNode = new MNode(lambdaI.ident, Some(this), lambdaI.mTipe,lambdaI.params)
+  val method:MNode = new MNode(lambdaI.methodIdent, Some(this), lambdaI.mTipe,lambdaI.params)
 
   override def findClass(ident: String): Option[CNode] = None
 

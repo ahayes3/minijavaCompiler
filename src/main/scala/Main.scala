@@ -44,5 +44,6 @@ object Main {
         fos.close()
       }
     })
+    println("Files written")
   }
 }
