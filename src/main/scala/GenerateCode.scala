@@ -43,7 +43,7 @@ object GenerateCode {
     val lambdas = goal.lambdas.map(p => (visitLambda(p, new ClassWriter(ClassWriter.COMPUTE_FRAMES)), p.ident))
 
 
-    classes :++ lambdas :++ lambdaClasses :+ (mainClass, goal.main.ident)
+    Seq[(Array[Byte],String)]((mainClass,goal.main.ident)) :++ classes :++ lambdas :++ lambdaClasses
   }
 
   def visitMain(clazz: MainClass, cw: ClassWriter): Array[Byte] = {
@@ -189,7 +189,7 @@ object GenerateCode {
       else
         visitExp(a.value, mv, ctx)
 
-      val tmp = ctx.parent.get.fields(a.ident)
+      val tmp = ctx.getVar(a.ident).get//ctx.parent.get.fields(a.ident)
       val owner = ctx.getOwner(a.ident)
       mv.visitFieldInsn(Opcodes.PUTFIELD, owner.get.ident, a.ident, getDescriptor(tmp))
     }

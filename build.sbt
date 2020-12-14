@@ -10,3 +10,4 @@ libraryDependencies += "org.antlr" % "antlr4-runtime" % "4.9"
 //ASM framework
 libraryDependencies += "org.ow2.asm" % "asm" % "9.0"
 libraryDependencies += "org.ow2.asm" % "asm-util" % "9.0"
+libraryDependencies += "org.soot-oss" % "soot" % "4.2.1"
